@@ -53,10 +53,38 @@ const schoolSchedules = {
 };
 
 const modeLabels = { normal: "通常校時", short: "短縮校時", test: "テスト校時" };
+const scheduleStorageKey = "ju-count-schedules";
+const groupStorageKey = "ju-count-schedule-groups";
+const scheduleModes = ["normal", "short", "test"];
+
+function cloneSchedules(schedules) {
+  return JSON.parse(JSON.stringify(schedules));
+}
+
+function normalizeSchedules(schedules) {
+  scheduleModes.forEach((mode) => {
+    if (!Array.isArray(schedules[mode])) return;
+    schedules[mode].forEach((period) => {
+      period.bellSeconds = Number.isFinite(Number(period.bellSeconds)) ? Math.max(0, Number(period.bellSeconds)) : 37;
+    });
+  });
+  return schedules;
+}
+
+const storedSchedules = localStorage.getItem(scheduleStorageKey);
+if (storedSchedules) {
+  try {
+    normalizeSchedules(Object.assign(schoolSchedules, JSON.parse(storedSchedules)));
+  } catch (error) {
+    console.warn("保存済み時間割を読み込めませんでした。", error);
+  }
+}
+normalizeSchedules(schoolSchedules);
 const savedMode = localStorage.getItem("ju-count-mode");
 let currentMode = savedMode && schoolSchedules[savedMode] ? savedMode : "normal";
 const savedColor = localStorage.getItem("ju-count-color") || "#007bff";
 const savedDarkMode = localStorage.getItem("ju-count-dark-mode") === "true";
+const GOOGLE_CLIENT_ID = "";
 
 const elements = {
   date: document.querySelector("#current-date"),
@@ -66,11 +94,28 @@ const elements = {
   periodName: document.querySelector("#period-name"),
   countdown: document.querySelector("#countdown"),
   caption: document.querySelector("#countdown-caption"),
+  bellCountdown: document.querySelector("#bell-countdown"),
   progressTrack: document.querySelector(".progress-track"),
   progressBar: document.querySelector("#progress-bar"),
   next: document.querySelector("#next-period"),
   list: document.querySelector("#schedule-list"),
   modeLabel: document.querySelector("#schedule-mode-label")
+};
+
+const appUi = {
+  menuButton: document.querySelector("#menu-button"),
+  menuDrawer: document.querySelector("#menu-drawer"),
+  menuClose: document.querySelector("#menu-close"),
+  memoOpen: document.querySelector("#memo-open"),
+  memoOverlay: document.querySelector("#memo-overlay"),
+  memoClose: document.querySelector("#memo-close"),
+  memoText: document.querySelector("#memo-text"),
+  memoSaved: document.querySelector("#memo-saved"),
+  calendarConnect: document.querySelector("#calendar-connect"),
+  calendarStatus: document.querySelector("#calendar-status"),
+  calendarHelp: document.querySelector("#calendar-help"),
+  tasksList: document.querySelector("#tasks-list"),
+  tasksEmpty: document.querySelector("#tasks-empty")
 };
 
 const settings = {
@@ -80,12 +125,36 @@ const settings = {
   darkMode: document.querySelector("#dark-mode-toggle"),
   scheduleButton: document.querySelector("#show-schedule-button"),
   schedulePanel: document.querySelector("#schedule-panel"),
-  modeOnboarding: document.querySelector("#mode-onboarding")
+  modeOnboarding: document.querySelector("#mode-onboarding"),
+  scheduleEditorOpen: document.querySelector("#schedule-editor-open"),
+  scheduleEditorOverlay: document.querySelector("#schedule-editor-overlay"),
+  scheduleEditorClose: document.querySelector("#schedule-editor-close"),
+  scheduleEditMode: document.querySelector("#schedule-edit-mode"),
+  scheduleEditor: document.querySelector("#schedule-editor"),
+  addPeriod: document.querySelector("#add-period-button"),
+  groupName: document.querySelector("#group-name"),
+  saveGroup: document.querySelector("#save-group-button"),
+  savedGroupsSection: document.querySelector("#saved-groups-section"),
+  groupSelect: document.querySelector("#schedule-group-select"),
+  loadGroup: document.querySelector("#load-group-button"),
+  editorMessage: document.querySelector("#schedule-editor-message")
 };
 
 function setThemeColor(color) {
   document.documentElement.style.setProperty("--accent", color);
-  const colorMap = { "#007bff": "#005fc7", "#6f42c1": "#59359c", "#e8590c": "#bd4708", "#d63384": "#a61e63", "#00897b": "#00695c" };
+  const colorMap = {
+    "#007bff": "#005fc7",
+    "#6f42c1": "#59359c",
+    "#e8590c": "#bd4708",
+    "#d63384": "#a61e63",
+    "#00897b": "#00695c",
+    "#198754": "#146c43",
+    "#795548": "#5d4037",
+    "#607d8b": "#455a64",
+    "#c2185b": "#880e4f",
+    "#5c6bc0": "#3949ab",
+    "#495057": "#343a40"
+  };
   document.documentElement.style.setProperty("--accent-dark", colorMap[color] || color);
   document.querySelectorAll(".color-option").forEach((option) => option.classList.toggle("is-selected", option.dataset.color === color));
   localStorage.setItem("ju-count-color", color);
@@ -101,6 +170,81 @@ function toggleSettings(open) {
   settings.overlay.hidden = !open;
   settings.button.setAttribute("aria-expanded", String(open));
   if (open) settings.close.focus();
+}
+
+function toggleMenu(open) {
+  appUi.menuDrawer.classList.toggle("is-open", open);
+  appUi.menuDrawer.setAttribute("aria-hidden", String(!open));
+  appUi.menuButton.setAttribute("aria-expanded", String(open));
+  if (open) appUi.menuClose.focus();
+}
+
+function toggleMemo(open) {
+  appUi.memoOverlay.hidden = !open;
+  if (open) appUi.memoText.focus();
+}
+
+function renderTasks(events) {
+  appUi.tasksList.innerHTML = events.map((event) => `
+    <li class="task-item">
+      <span>${escapeHtml(event.summary)}</span>
+      <time datetime="${event.date.toISOString()}">${event.date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</time>
+    </li>
+  `).join("");
+  appUi.tasksEmpty.hidden = events.length > 0;
+}
+
+function connectGoogleCalendar() {
+  if (!GOOGLE_CLIENT_ID) {
+    appUi.calendarHelp.textContent = "Google CloudのOAuthクライアントIDをscript.jsのGOOGLE_CLIENT_IDに設定してください。";
+    return;
+  }
+  if (!window.google || !window.google.accounts) {
+    appUi.calendarHelp.textContent = "Googleログイン機能を読み込み中です。少し待ってから再試行してください。";
+    return;
+  }
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/calendar.readonly",
+    callback: async (response) => {
+      if (response.error) {
+        appUi.calendarHelp.textContent = "Googleカレンダーへの接続に失敗しました。";
+        return;
+      }
+      await loadCalendarEvents(response.access_token);
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+async function loadCalendarEvents(accessToken) {
+  const start = new Date();
+  const end = new Date(start);
+  end.setDate(end.getDate() + 30);
+  const params = new URLSearchParams({
+    timeMin: start.toISOString(),
+    timeMax: end.toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "10"
+  });
+  try {
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error(`Calendar API returned ${response.status}`);
+    const data = await response.json();
+    const events = (data.items || []).filter((event) => event.summary && event.start?.dateTime).map((event) => ({
+      summary: event.summary,
+      date: new Date(event.start.dateTime)
+    }));
+    renderTasks(events);
+    appUi.calendarStatus.textContent = "接続中";
+    appUi.calendarHelp.textContent = "今後30日間の予定を表示しています。";
+  } catch (error) {
+    console.error(error);
+    appUi.calendarHelp.textContent = "予定を取得できませんでした。Googleカレンダーの権限を確認してください。";
+  }
 }
 
 function timeToMinutes(time) {
@@ -128,6 +272,94 @@ function renderSchedule(schedule, activeIndex) {
       <span class="schedule-item__time">${period.start}〜${period.end}</span>
     </li>
   `).join("");
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[character]));
+}
+
+function renderScheduleEditor() {
+  const mode = settings.scheduleEditMode.value;
+  const schedule = schoolSchedules[mode];
+  settings.scheduleEditor.innerHTML = schedule.map((period, index) => `
+    <div class="schedule-editor-row" data-index="${index}" data-break="${Boolean(period.isBreak)}">
+      <input data-field="name" type="text" value="${escapeHtml(period.name)}" aria-label="名称">
+      <input data-field="start" type="time" value="${period.start}" aria-label="開始時刻">
+      <input data-field="end" type="time" value="${period.end}" aria-label="終了時刻">
+      <input data-field="bellSeconds" type="number" min="0" max="600" value="${period.bellSeconds}" aria-label="チャイム秒数">
+      <button class="remove-period-button" type="button" aria-label="${escapeHtml(period.name)}を削除">×</button>
+    </div>
+  `).join("");
+}
+
+function persistSchedules() {
+  localStorage.setItem(scheduleStorageKey, JSON.stringify(schoolSchedules));
+}
+
+function updateEditorSchedule() {
+  const mode = settings.scheduleEditMode.value;
+  schoolSchedules[mode] = Array.from(settings.scheduleEditor.querySelectorAll(".schedule-editor-row")).map((row) => ({
+    name: row.querySelector('[data-field="name"]').value.trim() || "無題",
+    start: row.querySelector('[data-field="start"]').value,
+    end: row.querySelector('[data-field="end"]').value,
+    bellSeconds: Math.max(0, Number(row.querySelector('[data-field="bellSeconds"]').value) || 0),
+    isBreak: row.dataset.break === "true"
+  })).filter((period) => period.start && period.end);
+  normalizeSchedules(schoolSchedules);
+  persistSchedules();
+}
+
+function loadGroups() {
+  const groups = JSON.parse(localStorage.getItem(groupStorageKey) || "{}");
+  const names = Object.keys(groups);
+  settings.savedGroupsSection.hidden = names.length === 0;
+  settings.groupSelect.innerHTML = '<option value="">選択してください</option>';
+  names.forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    settings.groupSelect.appendChild(option);
+  });
+}
+
+function saveGroup() {
+  const name = settings.groupName.value.trim();
+  if (!name) {
+    settings.editorMessage.textContent = "グループ名を入力してください。";
+    return;
+  }
+  updateEditorSchedule();
+  const groups = JSON.parse(localStorage.getItem(groupStorageKey) || "{}");
+  groups[name] = cloneSchedules(schoolSchedules);
+  localStorage.setItem(groupStorageKey, JSON.stringify(groups));
+  settings.groupName.value = "";
+  loadGroups();
+  settings.groupSelect.value = name;
+  settings.editorMessage.textContent = `「${name}」を保存しました。`;
+}
+
+function loadGroup() {
+  const name = settings.groupSelect.value;
+  const groups = JSON.parse(localStorage.getItem(groupStorageKey) || "{}");
+  if (!name || !groups[name]) return;
+  Object.assign(schoolSchedules, normalizeSchedules(cloneSchedules(groups[name])));
+  persistSchedules();
+  renderScheduleEditor();
+  settings.editorMessage.textContent = `「${name}」を読み込みました。次回起動時から反映されます。`;
+}
+
+function toggleScheduleEditor(open) {
+  settings.scheduleEditorOverlay.hidden = !open;
+  if (open) {
+    settings.scheduleEditMode.value = currentMode;
+    renderScheduleEditor();
+    loadGroups();
+    settings.scheduleEditMode.focus();
+  } else {
+    settings.scheduleEditorOpen.focus();
+  }
 }
 
 function setMode(mode, updateDisplay = true) {
@@ -160,7 +392,7 @@ function update() {
 
   elements.date.textContent = now.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
   elements.date.dateTime = now.toISOString();
-  elements.statusCard.classList.remove("is-break", "is-ending");
+  elements.statusCard.classList.remove("is-break");
   renderSchedule(schedule, activeIndex);
 
   if (active) {
@@ -172,9 +404,11 @@ function update() {
     elements.periodName.textContent = active.name;
     elements.periodTime.textContent = `${active.start}〜${active.end}`;
     elements.caption.textContent = active.isBreak ? "終了まで" : "授業終了まで";
+    const bellRemaining = remaining - active.bellSeconds;
+    elements.bellCountdown.hidden = false;
+    elements.bellCountdown.textContent = bellRemaining >= 0 ? `チャイムまで: ${Math.ceil(bellRemaining)}秒` : "チャイム済み";
     if (active.isBreak) elements.statusCard.classList.add("is-break");
-    if (!active.isBreak && remaining <= 300) elements.statusCard.classList.add("is-ending");
-    document.title = `[${formatRemaining(remaining)}] ${active.name} - じゅかうんと`;
+    document.title = `[${formatRemaining(remaining)}] ${active.name} - ju!count`;
   } else if (next) {
     const start = dateAtTime(now, next.start);
     remaining = (start - now) / 1000;
@@ -182,13 +416,15 @@ function update() {
     elements.periodName.textContent = "次の授業まで";
     elements.periodTime.textContent = `${next.start}〜${next.end}`;
     elements.caption.textContent = "開始まで";
-    document.title = `[${formatRemaining(remaining)}] 授業前 - じゅかうんと`;
+    elements.bellCountdown.hidden = true;
+    document.title = `[${formatRemaining(remaining)}] 授業前 - ju!count`;
   } else {
     elements.statusLabel.textContent = "本日の校時";
     elements.periodName.textContent = "すべての校時が終了";
     elements.periodTime.textContent = "";
     elements.caption.textContent = "お疲れ様でした！";
-    document.title = "放課後 - じゅかうんと";
+    elements.bellCountdown.hidden = true;
+    document.title = "放課後 - ju!count";
   }
 
   elements.countdown.textContent = formatRemaining(remaining);
@@ -221,8 +457,55 @@ settings.scheduleButton.addEventListener("click", () => {
   settings.schedulePanel.hidden = !isHidden;
   settings.scheduleButton.textContent = isHidden ? "本日の校時を閉じる" : "本日の校時を表示";
 });
+settings.button.addEventListener("click", () => {
+  settings.scheduleEditMode.value = currentMode;
+});
+settings.scheduleEditorOpen.addEventListener("click", () => toggleScheduleEditor(true));
+settings.scheduleEditorClose.addEventListener("click", () => toggleScheduleEditor(false));
+settings.scheduleEditorOverlay.addEventListener("click", (event) => {
+  if (event.target === settings.scheduleEditorOverlay) toggleScheduleEditor(false);
+});
+settings.scheduleEditMode.addEventListener("change", renderScheduleEditor);
+settings.scheduleEditor.addEventListener("change", updateEditorSchedule);
+settings.scheduleEditor.addEventListener("click", (event) => {
+  if (!event.target.classList.contains("remove-period-button")) return;
+  event.target.closest(".schedule-editor-row").remove();
+  updateEditorSchedule();
+});
+settings.addPeriod.addEventListener("click", () => {
+  updateEditorSchedule();
+  schoolSchedules[settings.scheduleEditMode.value].push({
+    name: "新しい予定", start: "00:00", end: "00:30", bellSeconds: 37, isBreak: false
+  });
+  renderScheduleEditor();
+});
+settings.saveGroup.addEventListener("click", saveGroup);
+settings.loadGroup.addEventListener("click", loadGroup);
+appUi.menuButton.addEventListener("click", () => toggleMenu(true));
+appUi.menuClose.addEventListener("click", () => toggleMenu(false));
+appUi.memoOpen.addEventListener("click", () => {
+  toggleMenu(false);
+  toggleMemo(true);
+});
+appUi.memoClose.addEventListener("click", () => toggleMemo(false));
+appUi.memoOverlay.addEventListener("click", (event) => {
+  if (event.target === appUi.memoOverlay) toggleMemo(false);
+});
+appUi.memoText.value = localStorage.getItem("ju-countool-memo") || "";
+appUi.memoText.addEventListener("input", () => {
+  localStorage.setItem("ju-countool-memo", appUi.memoText.value);
+  appUi.memoSaved.textContent = "保存しました";
+  window.clearTimeout(appUi.memoSaveTimer);
+  appUi.memoSaveTimer = window.setTimeout(() => {
+    appUi.memoSaved.textContent = "";
+  }, 1200);
+});
+appUi.calendarConnect.addEventListener("click", connectGoogleCalendar);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !settings.overlay.hidden) toggleSettings(false);
+  if (event.key === "Escape" && !settings.scheduleEditorOverlay.hidden) toggleScheduleEditor(false);
+  if (event.key === "Escape" && !appUi.memoOverlay.hidden) toggleMemo(false);
+  if (event.key === "Escape" && appUi.menuDrawer.classList.contains("is-open")) toggleMenu(false);
 });
 
 setThemeColor(savedColor);
