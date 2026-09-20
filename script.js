@@ -204,7 +204,7 @@ function connectGoogleCalendar() {
     return;
   }
   const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: "958970346089-jcomvpldmnpd4i2ujl4cnemlccm3hdrm.apps.googleusercontent.com",
     scope: "https://www.googleapis.com/auth/calendar.readonly",
     callback: async (response) => {
       if (response.error) {
