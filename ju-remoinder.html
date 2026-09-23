@@ -15,15 +15,53 @@
         <button id="reminder-menu-button" class="tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
       </div>
     </header>
-    <section class="coming-soon">
-      <div class="coming-soon__card">
-        <p class="tagline">UP NEXT</p>
-        <h1>ju!remoinder</h1>
-        <p>予定とリマインダーを、もっとシンプルに。<br>ただいま準備中です。</p>
-        <a href="jutool.html">ju!toolへ戻る</a>
+    <section class="reminder-page" aria-labelledby="reminder-title">
+      <div class="reminder-heading">
+        <div>
+          <p class="tagline">PLAN YOUR DAY</p>
+          <h1 id="reminder-title">ju!remoinder</h1>
+        </div>
+        <button id="reminder-add" class="reminder-add-button" type="button">＋ 予定を追加</button>
       </div>
+      <section class="calendar-card" aria-label="カレンダー">
+        <div class="calendar-toolbar">
+          <button id="calendar-prev" class="calendar-nav" type="button" aria-label="前の月">‹</button>
+          <h2 id="calendar-title"></h2>
+          <button id="calendar-next" class="calendar-nav" type="button" aria-label="次の月">›</button>
+          <button id="calendar-today" class="calendar-today" type="button">今日</button>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+      <section class="reminder-agenda">
+        <div class="reminder-section-heading">
+          <h2>予定一覧</h2>
+          <span id="agenda-count"></span>
+        </div>
+        <div id="agenda-list" class="agenda-list"></div>
+      </section>
     </section>
   </main>
+  <div id="reminder-dialog" class="reminder-dialog-backdrop" hidden>
+    <section class="reminder-dialog" role="dialog" aria-modal="true" aria-labelledby="reminder-dialog-title">
+      <div class="reminder-dialog-header">
+        <div>
+          <p class="tagline">NEW REMINDER</p>
+          <h2 id="reminder-dialog-title">予定を追加</h2>
+        </div>
+        <button id="reminder-dialog-close" class="tool-menu__close" type="button" aria-label="予定追加を閉じる">×</button>
+      </div>
+      <form id="reminder-form" class="reminder-form">
+        <label>予定<input id="reminder-name" type="text" maxlength="80" placeholder="例：数学の宿題" required></label>
+        <label>日付<input id="reminder-date" type="date" required></label>
+        <label>時刻（任意）<input id="reminder-time" type="time"></label>
+        <label>メモ<textarea id="reminder-note" rows="3" maxlength="300" placeholder="場所や持ち物など"></textarea></label>
+        <button class="reminder-submit" type="submit">保存する</button>
+      </form>
+    </section>
+  </div>
   <aside id="reminder-menu" class="tool-menu" aria-hidden="true">
     <div class="tool-menu__header">
       <strong>メニュー</strong>
@@ -37,6 +75,102 @@
     </nav>
   </aside>
   <script>
+    const reminderKey = "ju-remoinder-events";
+    const calendarGrid = document.querySelector("#calendar-grid");
+    const calendarTitle = document.querySelector("#calendar-title");
+    const agendaList = document.querySelector("#agenda-list");
+    const agendaCount = document.querySelector("#agenda-count");
+    const reminderDialog = document.querySelector("#reminder-dialog");
+    const reminderForm = document.querySelector("#reminder-form");
+    const reminderDate = document.querySelector("#reminder-date");
+    const reminderName = document.querySelector("#reminder-name");
+    let displayedMonth = new Date();
+    displayedMonth.setDate(1);
+    const pad = (value) => String(value).padStart(2, "0");
+    const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const escapeReminder = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const readReminders = () => {
+      try {
+        const events = JSON.parse(localStorage.getItem(reminderKey) || "[]");
+        return Array.isArray(events) ? events : [];
+      } catch (error) {
+        console.warn("リマインダーを読み込めませんでした。", error);
+        return [];
+      }
+    };
+    const writeReminders = (events) => localStorage.setItem(reminderKey, JSON.stringify(events));
+    function openReminderDialog(selectedDate = dateKey(new Date())) {
+      reminderDate.value = selectedDate;
+      reminderDialog.hidden = false;
+      reminderName.focus();
+    }
+    function closeReminderDialog() {
+      reminderDialog.hidden = true;
+      reminderForm.reset();
+    }
+    function renderCalendar() {
+      const year = displayedMonth.getFullYear();
+      const month = displayedMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const todayKey = dateKey(new Date());
+      const reminders = readReminders();
+      calendarTitle.textContent = `${year}年 ${month + 1}月`;
+      calendarGrid.innerHTML = Array.from({ length: firstDay + daysInMonth }, (_, index) => {
+        if (index < firstDay) return '<span class="calendar-day calendar-day--empty" aria-hidden="true"></span>';
+        const day = index - firstDay + 1;
+        const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+        const dayEvents = reminders.filter((event) => event.date === key);
+        return `<button class="calendar-day${key === todayKey ? " is-today" : ""}${dayEvents.length ? " has-events" : ""}" type="button" data-date="${key}"><span>${day}</span>${dayEvents.slice(0, 2).map((event) => `<small>${escapeReminder(event.name)}</small>`).join("")}${dayEvents.length > 2 ? `<small>+${dayEvents.length - 2}件</small>` : ""}</button>`;
+      }).join("");
+    }
+    function renderAgenda() {
+      const reminders = readReminders().sort((a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
+      agendaCount.textContent = `${reminders.length}件`;
+      agendaList.innerHTML = reminders.length ? reminders.map((event) => `<article class="agenda-item"><time>${event.date.replace(/-/g, ".")}${event.time ? ` ${event.time}` : ""}</time><div><strong>${escapeReminder(event.name)}</strong>${event.note ? `<p>${escapeReminder(event.note)}</p>` : ""}</div><button type="button" data-delete-event="${event.id}" aria-label="${escapeReminder(event.name)}を削除">×</button></article>`).join("") : '<p class="agenda-empty">予定はまだありません。カレンダーの日付をクリックして追加できます。</p>';
+    }
+    function renderReminders() {
+      renderCalendar();
+      renderAgenda();
+    }
+    document.querySelector("#calendar-prev").addEventListener("click", () => {
+      displayedMonth.setMonth(displayedMonth.getMonth() - 1);
+      renderCalendar();
+    });
+    document.querySelector("#calendar-next").addEventListener("click", () => {
+      displayedMonth.setMonth(displayedMonth.getMonth() + 1);
+      renderCalendar();
+    });
+    document.querySelector("#calendar-today").addEventListener("click", () => {
+      displayedMonth = new Date();
+      displayedMonth.setDate(1);
+      renderCalendar();
+    });
+    calendarGrid.addEventListener("click", (event) => {
+      if (event.target.dataset.date) openReminderDialog(event.target.dataset.date);
+    });
+    document.querySelector("#reminder-add").addEventListener("click", () => openReminderDialog());
+    document.querySelector("#reminder-dialog-close").addEventListener("click", closeReminderDialog);
+    reminderDialog.addEventListener("click", (event) => {
+      if (event.target === reminderDialog) closeReminderDialog();
+    });
+    reminderForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const reminders = readReminders();
+      reminders.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: reminderName.value.trim(), date: reminderDate.value, time: document.querySelector("#reminder-time").value, note: document.querySelector("#reminder-note").value.trim() });
+      const savedDate = reminderDate.value;
+      writeReminders(reminders);
+      closeReminderDialog();
+      displayedMonth = new Date(`${savedDate}T00:00:00`);
+      displayedMonth.setDate(1);
+      renderReminders();
+    });
+    agendaList.addEventListener("click", (event) => {
+      const id = event.target.dataset.deleteEvent;
+      if (!id) return;
+      writeReminders(readReminders().filter((reminder) => reminder.id !== id));
+      renderReminders();
+    });
     const reminderTheme = document.querySelector("#reminder-theme");
     const reminderDark = localStorage.getItem("ju-tools-dark-mode") === "true";
     document.body.classList.toggle("dark-mode", reminderDark);
@@ -58,7 +192,9 @@
     reminderMenuClose.addEventListener("click", () => toggleReminderMenu(false));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") toggleReminderMenu(false);
+      if (event.key === "Escape" && !reminderDialog.hidden) closeReminderDialog();
     });
+    renderReminders();
   </script>
 </body>
 </html>
