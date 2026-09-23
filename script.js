@@ -84,7 +84,6 @@ const savedMode = localStorage.getItem("ju-count-mode");
 let currentMode = savedMode && schoolSchedules[savedMode] ? savedMode : "normal";
 const savedColor = localStorage.getItem("ju-count-color") || "#007bff";
 const savedDarkMode = localStorage.getItem("ju-count-dark-mode") === "true";
-const GOOGLE_CLIENT_ID = "";
 
 const elements = {
   date: document.querySelector("#current-date"),
@@ -106,14 +105,15 @@ const appUi = {
   menuButton: document.querySelector("#menu-button"),
   menuDrawer: document.querySelector("#menu-drawer"),
   menuClose: document.querySelector("#menu-close"),
-  memoOpen: document.querySelector("#memo-open"),
-  memoOverlay: document.querySelector("#memo-overlay"),
-  memoClose: document.querySelector("#memo-close"),
-  memoText: document.querySelector("#memo-text"),
-  memoSaved: document.querySelector("#memo-saved"),
   calendarConnect: document.querySelector("#calendar-connect"),
-  calendarStatus: document.querySelector("#calendar-status"),
-  calendarHelp: document.querySelector("#calendar-help"),
+  taskOverlay: document.querySelector("#task-overlay"),
+  taskClose: document.querySelector("#task-close"),
+  taskForm: document.querySelector("#task-form"),
+  taskName: document.querySelector("#task-name"),
+  taskDate: document.querySelector("#task-date"),
+  taskDetails: document.querySelector("#task-details"),
+  taskReflect: document.querySelector("#task-reflect"),
+  taskMessage: document.querySelector("#task-message"),
   tasksList: document.querySelector("#tasks-list"),
   tasksEmpty: document.querySelector("#tasks-empty")
 };
@@ -179,11 +179,6 @@ function toggleMenu(open) {
   if (open) appUi.menuClose.focus();
 }
 
-function toggleMemo(open) {
-  appUi.memoOverlay.hidden = !open;
-  if (open) appUi.memoText.focus();
-}
-
 function renderTasks(events) {
   appUi.tasksList.innerHTML = events.map((event) => `
     <li class="task-item">
@@ -192,6 +187,17 @@ function renderTasks(events) {
     </li>
   `).join("");
   appUi.tasksEmpty.hidden = events.length > 0;
+}
+
+function renderSavedTasks() {
+  const tasks = JSON.parse(localStorage.getItem("ju-count-tasks") || "[]")
+    .filter((task) => task.reflect)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10);
+  renderTasks(tasks.map((task) => ({
+    summary: task.name,
+    date: new Date(`${task.date}T00:00:00`)
+  })));
 }
 
 function connectGoogleCalendar() {
@@ -244,6 +250,11 @@ async function loadCalendarEvents(accessToken) {
   } catch (error) {
     console.error(error);
     appUi.calendarHelp.textContent = "予定を取得できませんでした。Googleカレンダーの権限を確認してください。";
+  }
+
+  function connectGoogleCalendar() {
+    appUi.taskOverlay.hidden = false;
+    appUi.taskName.focus();
   }
 }
 
@@ -483,33 +494,41 @@ settings.saveGroup.addEventListener("click", saveGroup);
 settings.loadGroup.addEventListener("click", loadGroup);
 appUi.menuButton.addEventListener("click", () => toggleMenu(true));
 appUi.menuClose.addEventListener("click", () => toggleMenu(false));
-appUi.memoOpen.addEventListener("click", () => {
+appUi.calendarConnect.addEventListener("click", () => {
   toggleMenu(false);
-  toggleMemo(true);
+  appUi.taskOverlay.hidden = false;
+  appUi.taskMessage.textContent = "";
+  appUi.taskName.focus();
 });
-appUi.memoClose.addEventListener("click", () => toggleMemo(false));
-appUi.memoOverlay.addEventListener("click", (event) => {
-  if (event.target === appUi.memoOverlay) toggleMemo(false);
+appUi.taskClose.addEventListener("click", () => {
+  appUi.taskOverlay.hidden = true;
 });
-appUi.memoText.value = localStorage.getItem("ju-countool-memo") || "";
-appUi.memoText.addEventListener("input", () => {
-  localStorage.setItem("ju-countool-memo", appUi.memoText.value);
-  appUi.memoSaved.textContent = "保存しました";
-  window.clearTimeout(appUi.memoSaveTimer);
-  appUi.memoSaveTimer = window.setTimeout(() => {
-    appUi.memoSaved.textContent = "";
-  }, 1200);
+appUi.taskForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const tasks = JSON.parse(localStorage.getItem("ju-count-tasks") || "[]");
+  tasks.push({
+    name: appUi.taskName.value.trim(),
+    date: appUi.taskDate.value,
+    details: appUi.taskDetails.value.trim(),
+    reflect: appUi.taskReflect.checked
+  });
+  localStorage.setItem("ju-count-tasks", JSON.stringify(tasks));
+  renderSavedTasks();
+  appUi.taskOverlay.hidden = true;
+  appUi.taskForm.reset();
+  appUi.taskReflect.checked = true;
+  appUi.taskMessage.textContent = "課題を保存しました。";
 });
-appUi.calendarConnect.addEventListener("click", connectGoogleCalendar);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !settings.overlay.hidden) toggleSettings(false);
   if (event.key === "Escape" && !settings.scheduleEditorOverlay.hidden) toggleScheduleEditor(false);
-  if (event.key === "Escape" && !appUi.memoOverlay.hidden) toggleMemo(false);
+  if (event.key === "Escape" && !appUi.taskOverlay.hidden) appUi.taskOverlay.hidden = true;
   if (event.key === "Escape" && appUi.menuDrawer.classList.contains("is-open")) toggleMenu(false);
 });
 
 setThemeColor(savedColor);
 setDarkMode(savedDarkMode);
 setMode(currentMode);
+renderSavedTasks();
 if (!savedMode) settings.modeOnboarding.hidden = false;
 setInterval(update, 1000);

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ju!tool - 学校生活を支えるツール">
+  <title>ju!tool</title>
+  <link rel="stylesheet" href="jutool.css">
+</head>
+<body>
+  <main class="tool-home">
+    <header class="tool-header">
+      <span class="tool-header__label">ju!tool</span>
+      <div class="tool-header__actions">
+        <button id="tool-theme-button" class="tool-theme-button" type="button" aria-label="ダークモードに切り替え">◐</button>
+        <button id="menu-button" class="tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+      </div>
+    </header>
+    <section class="logo-hero" aria-label="ju!tool">
+      <button id="logo" class="logo-button" type="button" aria-label="ju!toolのロゴを再生">
+      <svg class="logo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 264 64" role="img" aria-label="ju!tool">
+        <g class="logo__group logo__group--ghost" aria-hidden="true">
+          <text class="logo__letter logo__letter--j" x="42" y="45">j</text>
+          <text class="logo__letter logo__letter--u" x="72" y="45">u</text>
+          <text class="logo__letter logo__letter--bang" x="111" y="45">!</text>
+          <text class="logo__letter logo__letter--t" x="134" y="45">t</text>
+          <text class="logo__letter logo__letter--o" x="167" y="45">o</text>
+          <text class="logo__letter logo__letter--o2" x="203" y="45">o</text>
+          <text class="logo__letter logo__letter--l" x="239" y="45">l</text>
+        </g>
+        <g class="logo__group logo__group--ghost" aria-hidden="true">
+          <text class="logo__letter logo__letter--j" x="42" y="45">j</text>
+          <text class="logo__letter logo__letter--u" x="72" y="45">u</text>
+          <text class="logo__letter logo__letter--bang" x="111" y="45">!</text>
+          <text class="logo__letter logo__letter--t" x="134" y="45">t</text>
+          <text class="logo__letter logo__letter--o" x="167" y="45">o</text>
+          <text class="logo__letter logo__letter--o2" x="203" y="45">o</text>
+          <text class="logo__letter logo__letter--l" x="239" y="45">l</text>
+        </g>
+        <g class="logo__group">
+          <text class="logo__letter logo__letter--j" x="42" y="45">j</text>
+          <text class="logo__letter logo__letter--u" x="72" y="45">u</text>
+          <text class="logo__letter logo__letter--bang" x="111" y="45">!</text>
+          <text class="logo__letter logo__letter--t" x="134" y="45">t</text>
+          <text class="logo__letter logo__letter--o" x="167" y="45">o</text>
+          <text class="logo__letter logo__letter--o2" x="203" y="45">o</text>
+          <text data-anim class="logo__letter logo__letter--l" x="239" y="45">l</text>
+        </g>
+      </svg>
+      </button>
+      <p class="tagline">school life tools</p>
+    </section>
+    <section class="tool-grid" aria-label="ju!toolのアプリ">
+      <a class="tool-card tool-card--count" href="index.html">
+        <span class="tool-card__icon">◷</span>
+        <span><strong>ju!count</strong><small>校時表とカウントダウン</small></span>
+        <span class="tool-card__arrow">→</span>
+      </a>
+      <a class="tool-card tool-card--memo" href="memo.html">
+        <span class="tool-card__icon">▱</span>
+        <span><strong>ju!memo</strong><small>Google Keep風メモ</small></span>
+        <span class="tool-card__arrow">→</span>
+      </a>
+      <a class="tool-card tool-card--remoinder" href="ju-remoinder.html">
+        <span class="tool-card__icon">✓</span>
+        <span><strong>ju!remoinder</strong><small>予定とリマインダー</small></span>
+        <span class="tool-card__arrow">→</span>
+      </a>
+    </section>
+  </main>
+  <aside id="tool-menu" class="tool-menu" aria-hidden="true">
+    <div class="tool-menu__header">
+      <strong>メニュー</strong>
+      <button id="menu-close" class="tool-menu__close" type="button" aria-label="メニューを閉じる">×</button>
+    </div>
+    <nav class="tool-menu__nav" aria-label="アプリメニュー">
+      <a href="jutool.html">ju!tool ホーム</a>
+      <a href="index.html">ju!count</a>
+      <a href="memo.html">ju!memo</a>
+      <a href="ju-remoinder.html">ju!remoinder</a>
+    </nav>
+  </aside>
+  <script>
+    class LogoAnimation {
+      constructor(buttonSelector, svgSelector) {
+        this.button = document.querySelector(buttonSelector);
+        this.svg = document.querySelector(svgSelector);
+        this.lastAnimatedLetter = this.svg?.querySelector("[data-anim]");
+        this.playClass = "logo--running";
+        this.button?.addEventListener("click", () => this.replay());
+        this.lastAnimatedLetter?.addEventListener("animationend", () => this.stop());
+        this.replay();
+      }
+      replay() {
+        if (!this.button || this.button.disabled) return;
+        this.button.disabled = true;
+        this.svg.classList.remove(this.playClass);
+        requestAnimationFrame(() => this.svg.classList.add(this.playClass));
+      }
+      stop() {
+        this.button.disabled = false;
+        this.svg.classList.remove(this.playClass);
+      }
+    }
+    new LogoAnimation("#logo", "#logo .logo");
+    const menuButton = document.querySelector("#menu-button");
+    const menu = document.querySelector("#tool-menu");
+    const menuClose = document.querySelector("#menu-close");
+    const themeButton = document.querySelector("#tool-theme-button");
+    const savedTheme = localStorage.getItem("ju-tools-dark-mode") === "true";
+    document.body.classList.toggle("dark-mode", savedTheme);
+    themeButton.addEventListener("click", () => {
+      const enabled = !document.body.classList.contains("dark-mode");
+      document.body.classList.toggle("dark-mode", enabled);
+      localStorage.setItem("ju-tools-dark-mode", String(enabled));
+    });
+    const toggleMenu = (open) => {
+      menu.classList.toggle("is-open", open);
+      menu.setAttribute("aria-hidden", String(!open));
+      menuButton.setAttribute("aria-expanded", String(open));
+      if (open) menuClose.focus();
+    };
+    menuButton.addEventListener("click", () => toggleMenu(true));
+    menuClose.addEventListener("click", () => toggleMenu(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleMenu(false);
+    });
+  </script>
+</body>
+</html>

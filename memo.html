@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ju!countool メモ">
+  <title>ju!memo - ju!tool</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="memo-page">
+  <main class="memo-app">
+    <header class="memo-page-header">
+      <a href="jutool.html" class="back-link">← ju!tool</a>
+      <h1>ju!memo</h1>
+      <div class="memo-page-actions">
+        <button id="memo-theme" class="tool-theme-button" type="button" aria-label="ダークモードに切り替え">◐</button>
+        <button id="memo-add" class="memo-add" type="button" aria-label="メモを追加">＋</button>
+        <button id="memo-menu-button" class="tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+      </div>
+    </header>
+    <section class="memo-toolbar" aria-label="メモを整理">
+      <label class="memo-search"><span aria-hidden="true">⌕</span><input id="memo-search" type="search" placeholder="メモを検索..." aria-label="メモを検索"></label>
+      <div id="memo-tags" class="memo-tags" role="group" aria-label="タグで絞り込み"></div>
+    </section>
+    <section id="memo-grid" class="memo-grid"></section>
+  </main>
+  <aside id="memo-menu" class="tool-menu" aria-hidden="true">
+    <div class="tool-menu__header">
+      <strong>メニュー</strong>
+      <button id="memo-menu-close" class="tool-menu__close" type="button" aria-label="メニューを閉じる">×</button>
+    </div>
+    <nav class="tool-menu__nav" aria-label="アプリメニュー">
+      <a href="jutool.html">ju!tool ホーム</a>
+      <a href="index.html">ju!count</a>
+      <a href="memo.html">ju!memo</a>
+      <a href="ju-remoinder.html">ju!remoinder</a>
+    </nav>
+  </aside>
+  <script>
+    const memoKey = "ju-countool-memos";
+    const memoTheme = document.querySelector("#memo-theme");
+    const memoDark = localStorage.getItem("ju-tools-dark-mode") === "true";
+    document.body.classList.toggle("dark-mode", memoDark);
+    memoTheme.addEventListener("click", () => {
+      const enabled = !document.body.classList.contains("dark-mode");
+      document.body.classList.toggle("dark-mode", enabled);
+      localStorage.setItem("ju-tools-dark-mode", String(enabled));
+    });
+    const memoMenuButton = document.querySelector("#memo-menu-button");
+    const memoMenu = document.querySelector("#memo-menu");
+    const memoMenuClose = document.querySelector("#memo-menu-close");
+    const toggleMemoMenu = (open) => {
+      memoMenu.classList.toggle("is-open", open);
+      memoMenu.setAttribute("aria-hidden", String(!open));
+      memoMenuButton.setAttribute("aria-expanded", String(open));
+      if (open) memoMenuClose.focus();
+    };
+    memoMenuButton.addEventListener("click", () => toggleMemoMenu(true));
+    memoMenuClose.addEventListener("click", () => toggleMemoMenu(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleMemoMenu(false);
+    });
+    const grid = document.querySelector("#memo-grid");
+    const search = document.querySelector("#memo-search");
+    const tagBar = document.querySelector("#memo-tags");
+    const memoColors = ["#ffffff", "#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe", "#cffafe"];
+    let activeTag = "";
+    const escapeMemo = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const readMemos = () => {
+      try {
+        const memos = JSON.parse(localStorage.getItem(memoKey) || "[]");
+        return Array.isArray(memos) ? memos : [];
+      } catch (error) {
+        console.warn("メモを読み込めませんでした。", error);
+        return [];
+      }
+    };
+    const normalizeMemo = (memo) => ({
+      title: memo.title || "新しいメモ",
+      body: memo.body || "",
+      reflect: Boolean(memo.reflect),
+      color: memo.color || "#ffffff",
+      tags: Array.isArray(memo.tags) ? memo.tags : []
+    });
+    const writeMemos = (memos) => localStorage.setItem(memoKey, JSON.stringify(memos));
+    function renderTags(memos) {
+      const tags = [...new Set(memos.flatMap((memo) => normalizeMemo(memo).tags))];
+      tagBar.innerHTML = `<button class="memo-tag-filter${activeTag === "" ? " is-active" : ""}" type="button" data-tag="">すべて</button>${tags.map((tag) => `<button class="memo-tag-filter${activeTag === tag ? " is-active" : ""}" type="button" data-tag="${escapeMemo(tag)}">#${escapeMemo(tag)}</button>`).join("")}`;
+    }
+    function renderMemos() {
+      const memos = readMemos().map(normalizeMemo);
+      renderTags(memos);
+      const query = search.value.trim().toLowerCase();
+      const visible = memos.map((memo, index) => ({ memo, index })).filter(({ memo }) => {
+        const matchesText = !query || `${memo.title} ${memo.body} ${memo.tags.join(" ")}`.toLowerCase().includes(query);
+        const matchesTag = !activeTag || memo.tags.includes(activeTag);
+        return matchesText && matchesTag;
+      });
+      grid.innerHTML = visible.length ? visible.map(({ memo, index }) => `
+        <article class="memo-card memo-card--${memo.color.slice(1)}" style="--memo-color:${memo.color}">
+          <div class="memo-card__topline"><span class="memo-card__number">${String(index + 1).padStart(2, "0")}</span><div class="memo-color-picker" role="group" aria-label="メモの色">${memoColors.map((color) => `<button type="button" class="memo-color${memo.color === color ? " is-selected" : ""}" data-color="${color}" data-index="${index}" style="--swatch:${color}" aria-label="色を変更"></button>`).join("")}</div></div>
+          <input class="memo-card__title" data-index="${index}" value="${escapeMemo(memo.title)}" aria-label="メモのタイトル">
+          <textarea class="memo-card__body" data-index="${index}" aria-label="メモの内容" placeholder="ここに書き残す...">${escapeMemo(memo.body)}</textarea>
+          <div class="memo-tag-editor"><span>#</span><input class="memo-card__tags" data-index="${index}" value="${escapeMemo(memo.tags.join(", "))}" placeholder="タグを追加（例: 学校, アイデア）" aria-label="タグ"></div>
+          <div class="memo-card__chips">${memo.tags.map((tag) => `<button type="button" class="memo-chip" data-tag="${escapeMemo(tag)}">#${escapeMemo(tag)}</button>`).join("")}</div>
+          <div class="memo-card__footer"><label><input type="checkbox" data-reflect="${index}" ${memo.reflect ? "checked" : ""}> ju!countに反映</label><button type="button" data-delete="${index}">削除</button></div>
+        </article>
+      `).join("") : `<div class="memo-empty-state"><strong>${query || activeTag ? "見つかりませんでした" : "まだメモがありません"}</strong><span>${query || activeTag ? "検索条件やタグを変えてみてください。" : "＋ボタンから最初のメモを作りましょう。"}</span></div>`;
+    }
+    function saveMemoField(index, field, value) {
+      const memos = readMemos();
+      memos[index][field] = value;
+      writeMemos(memos);
+    }
+    document.querySelector("#memo-add").addEventListener("click", () => {
+      const memos = readMemos();
+      memos.unshift({ title: "新しいメモ", body: "", reflect: false, color: "#ffffff", tags: [] });
+      writeMemos(memos);
+      renderMemos();
+      document.querySelector(".memo-card__title").focus();
+    });
+    grid.addEventListener("input", (event) => {
+      if (event.target.classList.contains("memo-card__title")) saveMemoField(event.target.dataset.index, "title", event.target.value);
+      if (event.target.classList.contains("memo-card__body")) saveMemoField(event.target.dataset.index, "body", event.target.value);
+      if (event.target.classList.contains("memo-card__tags")) {
+        saveMemoField(event.target.dataset.index, "tags", event.target.value.split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean).slice(0, 8));
+        renderTags(readMemos());
+      }
+    });
+    grid.addEventListener("change", (event) => {
+      if (event.target.dataset.reflect !== undefined) saveMemoField(event.target.dataset.reflect, "reflect", event.target.checked);
+    });
+    grid.addEventListener("click", (event) => {
+      if (event.target.dataset.delete !== undefined) {
+        const memos = readMemos();
+        memos.splice(Number(event.target.dataset.delete), 1);
+        writeMemos(memos);
+        renderMemos();
+      }
+      if (event.target.dataset.color) {
+        saveMemoField(event.target.dataset.index, "color", event.target.dataset.color);
+        renderMemos();
+      }
+      if (event.target.dataset.tag !== undefined) {
+        activeTag = event.target.dataset.tag;
+        renderMemos();
+      }
+    });
+    tagBar.addEventListener("click", (event) => {
+      if (event.target.dataset.tag !== undefined) {
+        activeTag = event.target.dataset.tag;
+        renderMemos();
+      }
+    });
+    search.addEventListener("input", renderMemos);
+    renderMemos();
+  </script>
+</body>
+</html>

@@ -6,7 +6,6 @@
   <meta name="description" content="校時表に合わせて現在の時限と残り時間を表示する、ju!count。">
   <title>ju!count</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <main class="app-shell">
@@ -17,7 +16,7 @@
       </div>
       <div class="header-actions">
         <time id="current-date" class="current-date" datetime=""></time>
-        <button id="menu-button" class="menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+        <button id="menu-button" class="menu-button tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
         <button id="settings-button" class="settings-button" type="button" aria-label="設定を開く" aria-expanded="false">⚙</button>
       </div>
     </header>
@@ -40,9 +39,9 @@
     <section class="tasks-card" aria-labelledby="tasks-title">
       <div class="section-heading">
         <h2 id="tasks-title">直近の課題</h2>
-        <span id="calendar-status">未接続</span>
+        <span id="calendar-status">手入力</span>
       </div>
-      <p id="tasks-empty" class="tasks-empty">Googleカレンダーを接続すると課題を表示します。</p>
+      <p id="tasks-empty" class="tasks-empty">メニューから課題を手入力で登録できます。</p>
       <ol id="tasks-list" class="tasks-list"></ol>
     </section>
 
@@ -50,26 +49,37 @@
       <p>時刻は端末の現在時刻を使用しています</p>
     </footer>
   </main>
-  <aside id="menu-drawer" class="menu-drawer" aria-hidden="true">
-    <div class="menu-drawer__header">
+  <aside id="menu-drawer" class="tool-menu" aria-hidden="true">
+    <div class="tool-menu__header">
       <strong>メニュー</strong>
-      <button id="menu-close" class="close-button" type="button" aria-label="メニューを閉じる">×</button>
+      <button id="menu-close" class="tool-menu__close" type="button" aria-label="メニューを閉じる">×</button>
     </div>
-    <button id="memo-open" class="menu-item" type="button">ju!countool メモ</button>
+    <nav class="tool-menu__nav" aria-label="アプリメニュー">
+      <a href="jutool.html">ju!tool ホーム</a>
+      <a href="index.html">ju!count</a>
+      <a href="memo.html">ju!memo</a>
+      <a href="ju-remoinder.html">ju!remoinder</a>
+    </nav>
     <div class="menu-calendar">
-      <strong>Googleカレンダー</strong>
-      <p id="calendar-help">直近の課題をju!countに表示します。</p>
-      <button id="calendar-connect" class="menu-item menu-item--accent" type="button">Googleカレンダーに接続</button>
+      <strong>課題カレンダー</strong>
+      <p>課題を手入力で登録できます。</p>
+      <button id="calendar-connect" class="menu-item menu-item--accent" type="button">課題を登録</button>
     </div>
   </aside>
-  <div id="memo-overlay" class="settings-overlay" hidden>
-    <section class="memo-dialog" role="dialog" aria-modal="true" aria-labelledby="memo-title">
+  <div id="task-overlay" class="settings-overlay" hidden>
+    <section class="memo-dialog" role="dialog" aria-modal="true" aria-labelledby="task-title">
       <div class="settings-panel__header">
-        <h2 id="memo-title">ju!countool</h2>
-        <button id="memo-close" class="close-button" type="button" aria-label="メモを閉じる">×</button>
+        <h2 id="task-title">課題を登録</h2>
+        <button id="task-close" class="close-button" type="button" aria-label="課題登録を閉じる">×</button>
       </div>
-      <textarea id="memo-text" class="memo-text" maxlength="5000" placeholder="メモを入力してください"></textarea>
-      <p id="memo-saved" class="setting-message" role="status"></p>
+      <form id="task-form" class="task-form">
+        <label>課題名<input id="task-name" type="text" maxlength="100" required></label>
+        <label>提出日<input id="task-date" type="date" required></label>
+        <label>詳細<textarea id="task-details" maxlength="500" rows="4"></textarea></label>
+        <label class="task-check"><input id="task-reflect" type="checkbox" checked> ju!countに反映</label>
+        <button class="schedule-view-button" type="submit">保存</button>
+      </form>
+      <p id="task-message" class="setting-message" role="status"></p>
     </section>
   </div>
   <div id="settings-overlay" class="settings-overlay" hidden>

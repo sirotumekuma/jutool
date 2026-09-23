@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ju!remoinder</title>
+  <link rel="stylesheet" href="jutool.css">
+</head>
+<body>
+  <main class="tool-home">
+    <header class="tool-header">
+      <span class="tool-header__label">ju!tool</span>
+      <div class="tool-header__actions">
+        <button id="reminder-theme" class="tool-theme-button" type="button" aria-label="ダークモードに切り替え">◐</button>
+        <button id="reminder-menu-button" class="tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+      </div>
+    </header>
+    <section class="coming-soon">
+      <div class="coming-soon__card">
+        <p class="tagline">UP NEXT</p>
+        <h1>ju!remoinder</h1>
+        <p>予定とリマインダーを、もっとシンプルに。<br>ただいま準備中です。</p>
+        <a href="jutool.html">ju!toolへ戻る</a>
+      </div>
+    </section>
+  </main>
+  <aside id="reminder-menu" class="tool-menu" aria-hidden="true">
+    <div class="tool-menu__header">
+      <strong>メニュー</strong>
+      <button id="reminder-menu-close" class="tool-menu__close" type="button" aria-label="メニューを閉じる">×</button>
+    </div>
+    <nav class="tool-menu__nav" aria-label="アプリメニュー">
+      <a href="jutool.html">ju!tool ホーム</a>
+      <a href="index.html">ju!count</a>
+      <a href="memo.html">ju!memo</a>
+      <a href="ju-remoinder.html">ju!remoinder</a>
+    </nav>
+  </aside>
+  <script>
+    const reminderTheme = document.querySelector("#reminder-theme");
+    const reminderDark = localStorage.getItem("ju-tools-dark-mode") === "true";
+    document.body.classList.toggle("dark-mode", reminderDark);
+    reminderTheme.addEventListener("click", () => {
+      const enabled = !document.body.classList.contains("dark-mode");
+      document.body.classList.toggle("dark-mode", enabled);
+      localStorage.setItem("ju-tools-dark-mode", String(enabled));
+    });
+    const reminderMenuButton = document.querySelector("#reminder-menu-button");
+    const reminderMenu = document.querySelector("#reminder-menu");
+    const reminderMenuClose = document.querySelector("#reminder-menu-close");
+    const toggleReminderMenu = (open) => {
+      reminderMenu.classList.toggle("is-open", open);
+      reminderMenu.setAttribute("aria-hidden", String(!open));
+      reminderMenuButton.setAttribute("aria-expanded", String(open));
+      if (open) reminderMenuClose.focus();
+    };
+    reminderMenuButton.addEventListener("click", () => toggleReminderMenu(true));
+    reminderMenuClose.addEventListener("click", () => toggleReminderMenu(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleReminderMenu(false);
+    });
+  </script>
+</body>
+</html>
