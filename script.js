@@ -1,54 +1,42 @@
 const schoolSchedules = {
   normal: [
-    { name: "朝活動・学活", start: "08:15", end: "08:35" },
+    { name: "朝活動・学活", start: "08:15", end: "08:25" },
     { name: "1時間目", start: "08:40", end: "09:30" },
-    { name: "休み時間", start: "09:30", end: "09:40", isBreak: true },
     { name: "2時間目", start: "09:40", end: "10:30" },
-    { name: "休み時間", start: "10:30", end: "10:40", isBreak: true },
     { name: "3時間目", start: "10:40", end: "11:30" },
-    { name: "休み時間", start: "11:30", end: "11:40", isBreak: true },
     { name: "4時間目", start: "11:40", end: "12:30" },
     { name: "給食準備・給食", start: "12:30", end: "13:05" },
     { name: "清掃", start: "13:10", end: "13:25" },
     { name: "昼休み", start: "13:25", end: "13:40", isBreak: true },
     { name: "5時間目", start: "13:45", end: "14:35" },
-    { name: "休み時間", start: "14:35", end: "14:45", isBreak: true },
     { name: "6時間目", start: "14:45", end: "15:35" },
     { name: "学活", start: "15:40", end: "15:50" }
   ],
   short: [
-    { name: "朝活動・学活", start: "08:15", end: "08:35" },
+    { name: "朝活動・学活", start: "08:15", end: "08:25" },
     { name: "1時間目", start: "08:40", end: "09:25" },
-    { name: "休み時間", start: "09:25", end: "09:35", isBreak: true },
     { name: "2時間目", start: "09:35", end: "10:20" },
-    { name: "休み時間", start: "10:20", end: "10:30", isBreak: true },
     { name: "3時間目", start: "10:30", end: "11:15" },
-    { name: "休み時間", start: "11:15", end: "11:25", isBreak: true },
     { name: "4時間目", start: "11:25", end: "12:10" },
     { name: "給食準備・給食", start: "12:10", end: "12:45" },
     { name: "清掃", start: "12:50", end: "13:05" },
     { name: "昼休み", start: "13:05", end: "13:20", isBreak: true },
     { name: "5時間目", start: "13:25", end: "14:10" },
-    { name: "休み時間", start: "14:10", end: "14:20", isBreak: true },
     { name: "6時間目", start: "14:20", end: "15:05" },
     { name: "学活", start: "15:10", end: "15:20" }
   ],
   test: [
     { name: "学活", start: "08:15", end: "08:25" },
     { name: "1時間目（テスト）", start: "08:30", end: "09:20" },
-    { name: "休み時間", start: "09:20", end: "09:35", isBreak: true },
     { name: "2時間目（テスト）", start: "09:35", end: "10:25" },
-    { name: "休み時間", start: "10:25", end: "10:40", isBreak: true },
     { name: "3時間目（テスト）", start: "10:40", end: "11:30" },
-    { name: "休み時間", start: "11:30", end: "11:45", isBreak: true },
     { name: "4時間目（テスト）", start: "11:45", end: "12:35" },
     { name: "給食準備・給食", start: "12:35", end: "13:10" },
     { name: "清掃", start: "13:15", end: "13:30" },
     { name: "昼休み", start: "13:30", end: "13:40", isBreak: true },
     { name: "5時間目", start: "13:45", end: "14:35" },
-    { name: "休み時間", start: "14:35", end: "14:50", isBreak: true },
-    { name: "6時間目", start: "14:50", end: "15:40" },
-    { name: "学活", start: "15:45", end: "15:55" }
+    { name: "6時間目", start: "14:45", end: "15:35" },
+    { name: "学活", start: "15:40", end: "15:50" }
   ]
 };
 
@@ -64,6 +52,7 @@ function cloneSchedules(schedules) {
 function normalizeSchedules(schedules) {
   scheduleModes.forEach((mode) => {
     if (!Array.isArray(schedules[mode])) return;
+    schedules[mode] = schedules[mode].filter((period) => !period.isBreak || period.name === "昼休み");
     schedules[mode].forEach((period) => {
       period.bellSeconds = Number.isFinite(Number(period.bellSeconds)) ? Math.max(0, Number(period.bellSeconds)) : 37;
     });
@@ -278,7 +267,7 @@ function formatRemaining(totalSeconds) {
 function renderSchedule(schedule, activeIndex) {
   elements.list.innerHTML = schedule.map((period, index) => `
     <li class="schedule-item${period.isBreak ? " is-break" : ""}${index === activeIndex ? " is-current" : ""}">
-      <span class="schedule-item__number">${period.isBreak ? "休み時間" : `${index + 1}コマ`}</span>
+      <span class="schedule-item__number">${period.name === "昼休み" ? "昼休み" : period.isBreak ? "休憩" : `${index + 1}コマ`}</span>
       <span class="schedule-item__name">${period.name}</span>
       <span class="schedule-item__time">${period.start}〜${period.end}</span>
     </li>
