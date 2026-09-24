@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="校時表に合わせて現在の時限と残り時間を表示する、ju!count。">
+  <title>ju!count</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">SCHOOL TIME TABLE</p>
+        <h1>ju!count</h1>
+      </div>
+      <div class="header-actions">
+        <time id="current-date" class="current-date" datetime=""></time>
+        <button id="menu-button" class="menu-button tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+        <button id="settings-button" class="settings-button" type="button" aria-label="設定を開く" aria-expanded="false">⚙</button>
+      </div>
+    </header>
+
+    <section class="status-card" aria-live="polite">
+      <div class="status-card__top">
+        <span id="status-label" class="status-label">現在の時限</span>
+        <span id="period-time" class="period-time"></span>
+      </div>
+      <h2 id="period-name">読み込み中</h2>
+      <div class="countdown" id="countdown" aria-label="残り時間">00:00</div>
+      <p id="countdown-caption" class="countdown-caption">終了まで</p>
+      <p id="bell-countdown" class="bell-countdown" hidden></p>
+      <div class="progress-track" role="progressbar" aria-label="時限の進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p id="next-period" class="next-period"></p>
+    </section>
+
+    <section class="tasks-card" aria-labelledby="tasks-title">
+      <div class="section-heading">
+        <h2 id="tasks-title">直近の課題</h2>
+        <span id="calendar-status">手入力</span>
+      </div>
+      <p id="tasks-empty" class="tasks-empty">メニューから課題を手入力で登録できます。</p>
+      <ol id="tasks-list" class="tasks-list"></ol>
+    </section>
+
+    <footer>
+      <p>時刻は端末の現在時刻を使用しています</p>
+      <nav aria-label="サイト情報">
+        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
+        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+      </nav>
+    </footer>
+  </main>
+  <aside id="menu-drawer" class="tool-menu" aria-hidden="true">
+    <div class="tool-menu__header">
+      <strong>メニュー</strong>
+      <button id="menu-close" class="tool-menu__close" type="button" aria-label="メニューを閉じる">×</button>
+    </div>
+    <nav class="tool-menu__nav" aria-label="アプリメニュー">
+      <a href="index.html">ju!tool ホーム</a>
+      <a href="jucount.html">ju!count</a>
+      <a href="memo.html">ju!memo</a>
+      <a href="ju-remoinder.html">ju!remoinder</a>
+      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
+      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+    </nav>
+    <div class="menu-calendar">
+      <strong>課題カレンダー</strong>
+      <p>課題を手入力で登録できます。</p>
+      <button id="calendar-connect" class="menu-item menu-item--accent" type="button">課題を登録</button>
+    </div>
+  </aside>
+  <div id="task-overlay" class="settings-overlay" hidden>
+    <section class="memo-dialog" role="dialog" aria-modal="true" aria-labelledby="task-title">
+      <div class="settings-panel__header">
+        <h2 id="task-title">課題を登録</h2>
+        <button id="task-close" class="close-button" type="button" aria-label="課題登録を閉じる">×</button>
+      </div>
+      <form id="task-form" class="task-form">
+        <label>課題名<input id="task-name" type="text" maxlength="100" required></label>
+        <label>提出日<input id="task-date" type="date" required></label>
+        <label>詳細<textarea id="task-details" maxlength="500" rows="4"></textarea></label>
+        <label class="task-check"><input id="task-reflect" type="checkbox" checked> ju!countに反映</label>
+        <button class="schedule-view-button" type="submit">保存</button>
+      </form>
+      <p id="task-message" class="setting-message" role="status"></p>
+    </section>
+  </div>
+  <div id="settings-overlay" class="settings-overlay" hidden>
+    <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-panel__header">
+        <h2 id="settings-title">設定</h2>
+        <button id="settings-close" class="close-button" type="button" aria-label="設定を閉じる">×</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <strong>ダークモード</strong>
+          <p>暗い場所でも見やすい配色にします</p>
+        </div>
+        <label class="switch">
+          <input id="dark-mode-toggle" type="checkbox">
+          <span class="switch__slider"></span>
+        </label>
+      </div>
+      <div class="setting-group">
+        <strong>校時</strong>
+        <div class="mode-options" role="group" aria-label="校時">
+          <button class="mode-option" type="button" data-mode="normal">通常校時</button>
+          <button class="mode-option" type="button" data-mode="short">短縮校時</button>
+          <button class="mode-option" type="button" data-mode="test">テスト校時</button>
+        </div>
+      </div>
+      <div class="setting-group">
+        <strong>時間割の編集・保存</strong>
+        <button id="schedule-editor-open" class="schedule-view-button" type="button">時間割を編集</button>
+        <div id="schedule-editor-overlay" class="schedule-editor-overlay" hidden>
+          <section class="schedule-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="schedule-editor-title">
+            <div class="settings-panel__header">
+              <h3 id="schedule-editor-title">時間割の編集・保存</h3>
+              <button id="schedule-editor-close" class="close-button" type="button" aria-label="時間割編集を閉じる">×</button>
+            </div>
+            <div class="schedule-tools">
+              <label for="schedule-edit-mode">編集する校時</label>
+              <select id="schedule-edit-mode">
+                <option value="normal">通常校時</option>
+                <option value="short">短縮校時</option>
+                <option value="test">テスト校時</option>
+              </select>
+            </div>
+            <div id="schedule-editor" class="schedule-editor"></div>
+            <button id="add-period-button" class="secondary-button" type="button">＋ 時限を追加</button>
+            <div class="schedule-group-actions">
+              <input id="group-name" type="text" maxlength="30" placeholder="保存するグループ名">
+              <button id="save-group-button" class="schedule-view-button" type="button">グループとして保存</button>
+            </div>
+            <div id="saved-groups-section" class="saved-groups-section" hidden>
+              <div class="schedule-tools">
+                <label for="schedule-group-select">保存済みグループ</label>
+                <select id="schedule-group-select">
+                  <option value="">選択してください</option>
+                </select>
+              </div>
+              <button id="load-group-button" class="load-group-button" type="button">読み込む</button>
+            </div>
+            <p id="schedule-editor-message" class="setting-message" role="status"></p>
+          </section>
+        </div>
+      </div>
+      <div class="setting-group">
+        <strong>テーマカラー</strong>
+        <div class="color-options" role="group" aria-label="テーマカラー">
+          <button class="color-option is-selected" type="button" data-color="#007bff" aria-label="ブルー" title="ブルー"></button>
+          <button class="color-option" type="button" data-color="#6f42c1" aria-label="パープル" title="パープル"></button>
+          <button class="color-option" type="button" data-color="#e8590c" aria-label="オレンジ" title="オレンジ"></button>
+          <button class="color-option" type="button" data-color="#d63384" aria-label="ピンク" title="ピンク"></button>
+          <button class="color-option" type="button" data-color="#00897b" aria-label="ティール" title="ティール"></button>
+          <button class="color-option" type="button" data-color="#198754" aria-label="グリーン" title="グリーン"></button>
+          <button class="color-option" type="button" data-color="#795548" aria-label="ブラウン" title="ブラウン"></button>
+          <button class="color-option" type="button" data-color="#607d8b" aria-label="ブルーグレー" title="ブルーグレー"></button>
+          <button class="color-option" type="button" data-color="#c2185b" aria-label="ローズ" title="ローズ"></button>
+          <button class="color-option" type="button" data-color="#5c6bc0" aria-label="インディゴ" title="インディゴ"></button>
+          <button class="color-option" type="button" data-color="#495057" aria-label="スレート" title="スレート"></button>
+        </div>
+      </div>
+      <button id="show-schedule-button" class="schedule-view-button" type="button">本日の校時を表示</button>
+      <section id="schedule-panel" class="schedule-panel" hidden>
+        <div class="section-heading">
+          <h3>本日の校時</h3>
+          <span id="schedule-mode-label"></span>
+        </div>
+        <ol id="schedule-list" class="schedule-list"></ol>
+      </section>
+    </section>
+  </div>
+  <div id="mode-onboarding" class="settings-overlay" hidden>
+    <section class="onboarding-panel" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <p class="eyebrow">WELCOME</p>
+      <h2 id="onboarding-title">今日の校時を選択</h2>
+      <p class="onboarding-description">使用する校時表を選んでください。あとから設定で変更できます。</p>
+      <div class="onboarding-options" role="group" aria-label="校時の初期設定">
+        <button class="onboarding-option" type="button" data-mode="normal">
+          <strong>通常校時</strong><span>いつもの時間割</span>
+        </button>
+        <button class="onboarding-option" type="button" data-mode="short">
+          <strong>短縮校時</strong><span>短縮された時間割</span>
+        </button>
+        <button class="onboarding-option" type="button" data-mode="test">
+          <strong>テスト校時</strong><span>テスト期間の時間割</span>
+        </button>
+      </div>
+    </section>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
