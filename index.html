@@ -78,18 +78,51 @@
       <a href="jucount.html">ju!count</a>
       <a href="memo.html">ju!memo</a>
       <a href="ju-remoinder.html">ju!remoinder</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+      <button type="button" class="tool-link" data-page="privacy">プライバシーポリシー</button>
+      <button type="button" class="tool-link" data-page="terms">利用規約</button>
+      <a class="tool-link tool-link--external" href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
     </nav>
   </aside>
   <footer class="tool-footer">
     <nav class="tool-footer__nav" aria-label="サイト情報">
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+      <button type="button" class="tool-link tool-link--footer" data-page="privacy">プライバシーポリシー</button>
+      <button type="button" class="tool-link tool-link--footer" data-page="terms">利用規約</button>
+      <a class="tool-link tool-link--footer tool-link--external" href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
     </nav>
   </footer>
+  <div id="info-overlay" class="info-overlay" hidden>
+    <div class="info-panel" role="dialog" aria-modal="true" aria-labelledby="info-title">
+      <div class="info-panel__header">
+        <div>
+          <p class="tagline info-tagline">policies</p>
+          <h2 id="info-title">情報</h2>
+        </div>
+        <button id="info-close" class="tool-menu__close" type="button" aria-label="閉じる">×</button>
+      </div>
+      <div id="info-content" class="info-content">
+        <section class="info-page is-active" data-page="privacy">
+          <h3>プライバシーポリシー</h3>
+          <p>ju!tool は、利用者の快適な体験のためにローカルストレージを使用します。</p>
+          <ul>
+            <li>メモ、予定、設定などの情報は端末内に保存されます。</li>
+            <li>保存された情報は外部サーバーへ自動送信されません。</li>
+            <li>必要に応じてブラウザの設定からデータを削除できます。</li>
+          </ul>
+          <p>本サービスは個人利用を前提としており、利用者が入力した内容は端末内で管理されます。</p>
+        </section>
+        <section class="info-page" data-page="terms">
+          <h3>利用規約</h3>
+          <p>本サービスは学校生活をより快適にするための補助ツールとして提供しています。</p>
+          <ul>
+            <li>利用者は本サービスを適切な目的で使用してください。</li>
+            <li>入力した内容の管理責任は利用者にあります。</li>
+            <li>本サービスは予告なく内容や仕様を変更する場合があります。</li>
+          </ul>
+          <p>本サービスの利用により生じた損害について、開発者は責任を負わない場合があります。</p>
+        </section>
+      </div>
+    </div>
+  </div>
   <script>
     class LogoAnimation {
       constructor(buttonSelector, svgSelector) {
@@ -117,6 +150,11 @@
     const menu = document.querySelector("#tool-menu");
     const menuClose = document.querySelector("#menu-close");
     const themeButton = document.querySelector("#tool-theme-button");
+    const infoOverlay = document.querySelector("#info-overlay");
+    const infoClose = document.querySelector("#info-close");
+    const infoTitle = document.querySelector("#info-title");
+    const infoPages = document.querySelectorAll(".info-page");
+    const infoLinks = document.querySelectorAll("[data-page]");
     const savedTheme = localStorage.getItem("ju-tools-dark-mode") === "true";
     document.body.classList.toggle("dark-mode", savedTheme);
     themeButton.addEventListener("click", () => {
@@ -130,10 +168,38 @@
       menuButton.setAttribute("aria-expanded", String(open));
       if (open) menuClose.focus();
     };
+    const openInfo = (page) => {
+      const target = document.querySelector(`.info-page[data-page="${page}"]`);
+      if (!target || !infoOverlay) return;
+      infoPages.forEach((section) => section.classList.toggle("is-active", section === target));
+      infoTitle.textContent = page === "privacy" ? "プライバシーポリシー" : "利用規約";
+      infoOverlay.hidden = false;
+      document.body.style.overflow = "hidden";
+    };
+    const closeInfo = () => {
+      if (!infoOverlay) return;
+      infoOverlay.hidden = true;
+      document.body.style.overflow = "";
+    };
+    infoLinks.forEach((button) => {
+      const page = button.dataset.page;
+      if (!page) return;
+      button.addEventListener("click", () => {
+        toggleMenu(false);
+        openInfo(page);
+      });
+    });
+    infoClose.addEventListener("click", closeInfo);
+    infoOverlay.addEventListener("click", (event) => {
+      if (event.target === infoOverlay) closeInfo();
+    });
     menuButton.addEventListener("click", () => toggleMenu(true));
     menuClose.addEventListener("click", () => toggleMenu(false));
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") toggleMenu(false);
+      if (event.key === "Escape") {
+        toggleMenu(false);
+        closeInfo();
+      }
     });
   </script>
 </body>
