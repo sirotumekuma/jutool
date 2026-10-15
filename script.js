@@ -43,7 +43,18 @@ const schoolSchedules = {
 const modeLabels = { normal: "通常校時", short: "短縮校時", test: "テスト校時" };
 const scheduleStorageKey = "ju-count-schedules";
 const groupStorageKey = "ju-count-schedule-groups";
+const taskStorageKey = "ju-count-tasks";
+const reminderStorageKey = "ju-remoinder-events";
 const scheduleModes = ["normal", "short", "test"];
+const BELL_COUNTDOWN_SECONDS = 41;
+const RAINBOW_SPEED_STORAGE_KEY = "ju-count-rainbow-speed";
+const DEFAULT_RAINBOW_SPEED = 14;
+const MIN_RAINBOW_SPEED = 3;
+const MAX_RAINBOW_SPEED = 30;
+const CRACKER_LEVEL_STORAGE_KEY = "ju-count-cracker-level";
+const CRACKER_LEVEL_COUNTS = { none: 0, few: 12, normal: 32, more: 60, many: 100 };
+let previousLesson = null;
+let confettiTimeout;
 
 function cloneSchedules(schedules) {
   return JSON.parse(JSON.stringify(schedules));
@@ -53,9 +64,6 @@ function normalizeSchedules(schedules) {
   scheduleModes.forEach((mode) => {
     if (!Array.isArray(schedules[mode])) return;
     schedules[mode] = schedules[mode].filter((period) => !period.isBreak || period.name === "昼休み");
-    schedules[mode].forEach((period) => {
-      period.bellSeconds = Number.isFinite(Number(period.bellSeconds)) ? Math.max(0, Number(period.bellSeconds)) : 37;
-    });
   });
   return schedules;
 }
@@ -72,6 +80,12 @@ normalizeSchedules(schoolSchedules);
 const savedMode = localStorage.getItem("ju-count-mode");
 let currentMode = savedMode && schoolSchedules[savedMode] ? savedMode : "normal";
 const savedColor = localStorage.getItem("ju-count-color") || "#007bff";
+const storedRainbowSpeed = Number(localStorage.getItem(RAINBOW_SPEED_STORAGE_KEY));
+const savedRainbowSpeed = Number.isFinite(storedRainbowSpeed)
+  ? Math.min(MAX_RAINBOW_SPEED, Math.max(MIN_RAINBOW_SPEED, storedRainbowSpeed))
+  : DEFAULT_RAINBOW_SPEED;
+const storedCrackerLevel = localStorage.getItem(CRACKER_LEVEL_STORAGE_KEY);
+const savedCrackerLevel = Object.hasOwn(CRACKER_LEVEL_COUNTS, storedCrackerLevel) ? storedCrackerLevel : "normal";
 const savedDarkMode = localStorage.getItem("ju-count-dark-mode") === "true";
 
 const elements = {
@@ -83,6 +97,7 @@ const elements = {
   countdown: document.querySelector("#countdown"),
   caption: document.querySelector("#countdown-caption"),
   bellCountdown: document.querySelector("#bell-countdown"),
+  lessonStartCountdown: document.querySelector("#lesson-start-countdown"),
   progressTrack: document.querySelector(".progress-track"),
   progressBar: document.querySelector("#progress-bar"),
   next: document.querySelector("#next-period"),
@@ -126,11 +141,20 @@ const settings = {
   savedGroupsSection: document.querySelector("#saved-groups-section"),
   groupSelect: document.querySelector("#schedule-group-select"),
   loadGroup: document.querySelector("#load-group-button"),
-  editorMessage: document.querySelector("#schedule-editor-message")
+  editorMessage: document.querySelector("#schedule-editor-message"),
+  rainbowOverlay: document.querySelector("#rainbow-settings-overlay"),
+  rainbowSettingsOpen: document.querySelector("#rainbow-settings-open"),
+  rainbowSettingsClose: document.querySelector("#rainbow-settings-close"),
+  rainbowSpeed: document.querySelector("#rainbow-speed"),
+  rainbowSpeedValue: document.querySelector("#rainbow-speed-value"),
+  crackerOverlay: document.querySelector("#cracker-settings-overlay"),
+  crackerSettingsOpen: document.querySelector("#cracker-settings-open"),
+  crackerSettingsClose: document.querySelector("#cracker-settings-close"),
+  crackerLevel: document.querySelector("#cracker-level"),
+  crackerPreview: document.querySelector("#cracker-preview")
 };
 
 function setThemeColor(color) {
-  document.documentElement.style.setProperty("--accent", color);
   const colorMap = {
     "#007bff": "#005fc7",
     "#6f42c1": "#59359c",
@@ -144,9 +168,57 @@ function setThemeColor(color) {
     "#5c6bc0": "#3949ab",
     "#495057": "#343a40"
   };
-  document.documentElement.style.setProperty("--accent-dark", colorMap[color] || color);
+  const isRainbow = color === "rainbow";
+  const accent = isRainbow ? "#6f42c1" : color;
+  document.documentElement.style.setProperty("--accent", accent);
+  document.documentElement.style.setProperty("--accent-dark", colorMap[accent] || accent);
+  elements.statusCard.classList.toggle("is-rainbow", isRainbow);
   document.querySelectorAll(".color-option").forEach((option) => option.classList.toggle("is-selected", option.dataset.color === color));
   localStorage.setItem("ju-count-color", color);
+}
+
+function setRainbowSpeed(speed) {
+  const numericSpeed = Number(speed);
+  if (!Number.isFinite(numericSpeed)) throw new Error("虹色アニメーションの速度が不正です。");
+  const normalizedSpeed = Math.min(MAX_RAINBOW_SPEED, Math.max(MIN_RAINBOW_SPEED, numericSpeed));
+  document.documentElement.style.setProperty("--rainbow-duration", `${normalizedSpeed}s`);
+  settings.rainbowSpeed.value = String(normalizedSpeed);
+  settings.rainbowSpeedValue.value = `${normalizedSpeed}秒`;
+  localStorage.setItem(RAINBOW_SPEED_STORAGE_KEY, String(normalizedSpeed));
+}
+
+function toggleRainbowSettings(open) {
+  settings.rainbowOverlay.hidden = !open;
+  if (open) settings.rainbowSettingsClose.focus();
+  else settings.rainbowSettingsOpen.focus();
+}
+
+function setCrackerLevel(level) {
+  if (!Object.hasOwn(CRACKER_LEVEL_COUNTS, level)) {
+    throw new Error(`クラッカーの量が不正です: ${level}`);
+  }
+  settings.crackerLevel.value = level;
+  localStorage.setItem(CRACKER_LEVEL_STORAGE_KEY, level);
+}
+
+function showConfetti(count) {
+  const celebration = document.querySelector("#class-celebration");
+  const colors = ["#ff4d6d", "#ff9f1c", "#ffd60a", "#2ec4b6", "#3a86ff", "#8338ec"];
+  window.clearTimeout(confettiTimeout);
+  celebration.replaceChildren();
+  for (let index = 0; index < count; index += 1) {
+    const piece = document.createElement("span");
+    piece.className = "class-confetti__piece";
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.backgroundColor = colors[index % colors.length];
+    piece.style.setProperty("--confetti-drift", `${Math.round(Math.random() * 180 - 90)}px`);
+    piece.style.animationDelay = `${Math.random() * 0.45}s`;
+    piece.style.animationDuration = `${1.8 + Math.random() * 1.2}s`;
+    celebration.appendChild(piece);
+  }
+  if (count > 0) {
+    confettiTimeout = window.setTimeout(() => celebration.replaceChildren(), 4000);
+  }
 }
 
 function setDarkMode(enabled) {
@@ -179,7 +251,7 @@ function renderTasks(events) {
 }
 
 function renderSavedTasks() {
-  const tasks = JSON.parse(localStorage.getItem("ju-count-tasks") || "[]")
+  const tasks = JSON.parse(localStorage.getItem(taskStorageKey) || "[]")
     .filter((task) => task.reflect)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 10);
@@ -187,6 +259,35 @@ function renderSavedTasks() {
     summary: task.name,
     date: new Date(`${task.date}T00:00:00`)
   })));
+}
+
+function syncTasksToReminders(tasks) {
+  let tasksChanged = false;
+  tasks.forEach((task) => {
+    if (!task.id) {
+      task.id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      tasksChanged = true;
+    }
+  });
+  if (tasksChanged) localStorage.setItem(taskStorageKey, JSON.stringify(tasks));
+
+  const reminders = JSON.parse(localStorage.getItem(reminderStorageKey) || "[]");
+  const taskIds = new Set(tasks.map((task) => task.id));
+  const syncedReminders = reminders.filter((reminder) => !reminder.sourceTaskId || taskIds.has(reminder.sourceTaskId));
+  tasks.forEach((task) => {
+    const reminder = {
+      id: `ju-count-task-${task.id}`,
+      sourceTaskId: task.id,
+      name: task.name,
+      date: task.date,
+      time: "",
+      note: task.details || ""
+    };
+    const existingIndex = syncedReminders.findIndex((event) => event.sourceTaskId === task.id);
+    if (existingIndex >= 0) syncedReminders[existingIndex] = reminder;
+    else syncedReminders.push(reminder);
+  });
+  localStorage.setItem(reminderStorageKey, JSON.stringify(syncedReminders));
 }
 
 function connectGoogleCalendar() {
@@ -264,6 +365,14 @@ function formatRemaining(totalSeconds) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function isLessonPeriod(period) {
+  return !period.isBreak && !/(朝活動|学活|給食|清掃|昼休み)/.test(period.name);
+}
+
+function celebrateClassEnd() {
+  showConfetti(CRACKER_LEVEL_COUNTS[settings.crackerLevel.value]);
+}
+
 function renderSchedule(schedule, activeIndex) {
   elements.list.innerHTML = schedule.map((period, index) => `
     <li class="schedule-item${period.isBreak ? " is-break" : ""}${index === activeIndex ? " is-current" : ""}">
@@ -288,7 +397,6 @@ function renderScheduleEditor() {
       <input data-field="name" type="text" value="${escapeHtml(period.name)}" aria-label="名称">
       <input data-field="start" type="time" value="${period.start}" aria-label="開始時刻">
       <input data-field="end" type="time" value="${period.end}" aria-label="終了時刻">
-      <input data-field="bellSeconds" type="number" min="0" max="600" value="${period.bellSeconds}" aria-label="チャイム秒数">
       <button class="remove-period-button" type="button" aria-label="${escapeHtml(period.name)}を削除">×</button>
     </div>
   `).join("");
@@ -304,7 +412,6 @@ function updateEditorSchedule() {
     name: row.querySelector('[data-field="name"]').value.trim() || "無題",
     start: row.querySelector('[data-field="start"]').value,
     end: row.querySelector('[data-field="end"]').value,
-    bellSeconds: Math.max(0, Number(row.querySelector('[data-field="bellSeconds"]').value) || 0),
     isBreak: row.dataset.break === "true"
   })).filter((period) => period.start && period.end);
   normalizeSchedules(schoolSchedules);
@@ -387,8 +494,15 @@ function update() {
   const nextIndex = schedule.findIndex((period) => timeToMinutes(period.start) > nowMinutes);
   const active = activeIndex >= 0 ? schedule[activeIndex] : null;
   const next = nextIndex >= 0 ? schedule[nextIndex] : null;
+  const nextLesson = schedule.find((period) => isLessonPeriod(period) && timeToMinutes(period.start) > nowMinutes);
+  const activeLesson = active && isLessonPeriod(active) ? active : null;
   let remaining = 0;
   let progress = 0;
+
+  if (previousLesson && (!activeLesson || activeLesson.start !== previousLesson.start || activeLesson.end !== previousLesson.end)) {
+    if (now >= dateAtTime(now, previousLesson.end)) celebrateClassEnd();
+  }
+  previousLesson = activeLesson;
 
   elements.date.textContent = now.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
   elements.date.dateTime = now.toISOString();
@@ -404,7 +518,7 @@ function update() {
     elements.periodName.textContent = active.name;
     elements.periodTime.textContent = `${active.start}〜${active.end}`;
     elements.caption.textContent = active.isBreak ? "終了まで" : "授業終了まで";
-    const bellRemaining = remaining - active.bellSeconds;
+    const bellRemaining = remaining - BELL_COUNTDOWN_SECONDS;
     elements.bellCountdown.hidden = false;
     elements.bellCountdown.textContent = bellRemaining >= 0 ? `チャイムまで: ${Math.ceil(bellRemaining)}秒` : "チャイム済み";
     if (active.isBreak) elements.statusCard.classList.add("is-break");
@@ -427,6 +541,11 @@ function update() {
     document.title = "放課後 - ju!count";
   }
 
+  elements.lessonStartCountdown.hidden = !nextLesson;
+  if (nextLesson) {
+    const lessonStart = dateAtTime(now, nextLesson.start);
+    elements.lessonStartCountdown.textContent = `次の授業開始まで: ${Math.ceil((lessonStart - now) / 1000)}秒`;
+  }
   elements.countdown.textContent = formatRemaining(remaining);
   elements.progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
   elements.progressTrack.setAttribute("aria-valuenow", String(Math.round(progress)));
@@ -452,6 +571,30 @@ settings.darkMode.addEventListener("change", (event) => setDarkMode(event.target
 document.querySelectorAll(".color-option").forEach((option) => {
   option.addEventListener("click", () => setThemeColor(option.dataset.color));
 });
+settings.rainbowSettingsOpen.addEventListener("click", () => toggleRainbowSettings(true));
+settings.rainbowSettingsClose.addEventListener("click", () => toggleRainbowSettings(false));
+settings.rainbowOverlay.addEventListener("click", (event) => {
+  if (event.target === settings.rainbowOverlay) toggleRainbowSettings(false);
+});
+settings.rainbowSpeed.addEventListener("input", (event) => setRainbowSpeed(event.target.value));
+settings.crackerSettingsOpen.addEventListener("click", () => {
+  settings.crackerOverlay.hidden = false;
+  settings.crackerSettingsClose.focus();
+});
+settings.crackerSettingsClose.addEventListener("click", () => {
+  settings.crackerOverlay.hidden = true;
+  settings.crackerSettingsOpen.focus();
+});
+settings.crackerOverlay.addEventListener("click", (event) => {
+  if (event.target === settings.crackerOverlay) {
+    settings.crackerOverlay.hidden = true;
+    settings.crackerSettingsOpen.focus();
+  }
+});
+settings.crackerLevel.addEventListener("change", (event) => setCrackerLevel(event.target.value));
+settings.crackerPreview.addEventListener("click", () => {
+  showConfetti(CRACKER_LEVEL_COUNTS[settings.crackerLevel.value]);
+});
 settings.scheduleButton.addEventListener("click", () => {
   const isHidden = settings.schedulePanel.hidden;
   settings.schedulePanel.hidden = !isHidden;
@@ -475,7 +618,7 @@ settings.scheduleEditor.addEventListener("click", (event) => {
 settings.addPeriod.addEventListener("click", () => {
   updateEditorSchedule();
   schoolSchedules[settings.scheduleEditMode.value].push({
-    name: "新しい予定", start: "00:00", end: "00:30", bellSeconds: 37, isBreak: false
+  name: "新しい予定", start: "00:00", end: "00:30", isBreak: false
   });
   renderScheduleEditor();
 });
@@ -494,30 +637,43 @@ appUi.taskClose.addEventListener("click", () => {
 });
 appUi.taskForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const tasks = JSON.parse(localStorage.getItem("ju-count-tasks") || "[]");
-  tasks.push({
+  const tasks = JSON.parse(localStorage.getItem(taskStorageKey) || "[]");
+  const task = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: appUi.taskName.value.trim(),
     date: appUi.taskDate.value,
     details: appUi.taskDetails.value.trim(),
     reflect: appUi.taskReflect.checked
-  });
-  localStorage.setItem("ju-count-tasks", JSON.stringify(tasks));
+  };
+  tasks.push(task);
+  localStorage.setItem(taskStorageKey, JSON.stringify(tasks));
+  syncTasksToReminders(tasks);
   renderSavedTasks();
   appUi.taskOverlay.hidden = true;
   appUi.taskForm.reset();
   appUi.taskReflect.checked = true;
   appUi.taskMessage.textContent = "課題を保存しました。";
 });
+window.addEventListener("storage", (event) => {
+  if (event.key === taskStorageKey) renderSavedTasks();
+});
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !settings.overlay.hidden) toggleSettings(false);
+  if (event.key === "Escape" && !settings.crackerOverlay.hidden) {
+    settings.crackerOverlay.hidden = true;
+    settings.crackerSettingsOpen.focus();
+  } else if (event.key === "Escape" && !settings.rainbowOverlay.hidden) toggleRainbowSettings(false);
+  else if (event.key === "Escape" && !settings.overlay.hidden) toggleSettings(false);
   if (event.key === "Escape" && !settings.scheduleEditorOverlay.hidden) toggleScheduleEditor(false);
   if (event.key === "Escape" && !appUi.taskOverlay.hidden) appUi.taskOverlay.hidden = true;
   if (event.key === "Escape" && appUi.menuDrawer.classList.contains("is-open")) toggleMenu(false);
 });
 
 setThemeColor(savedColor);
+setRainbowSpeed(savedRainbowSpeed);
+setCrackerLevel(savedCrackerLevel);
 setDarkMode(savedDarkMode);
 setMode(currentMode);
+syncTasksToReminders(JSON.parse(localStorage.getItem(taskStorageKey) || "[]"));
 renderSavedTasks();
 if (!savedMode) settings.modeOnboarding.hidden = false;
 setInterval(update, 1000);

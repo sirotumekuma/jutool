@@ -79,6 +79,7 @@
   </aside>
   <script>
     const reminderKey = "ju-remoinder-events";
+    const countTasksKey = "ju-count-tasks";
     const calendarGrid = document.querySelector("#calendar-grid");
     const calendarTitle = document.querySelector("#calendar-title");
     const agendaList = document.querySelector("#agenda-list");
@@ -102,6 +103,41 @@
       }
     };
     const writeReminders = (events) => localStorage.setItem(reminderKey, JSON.stringify(events));
+    function syncCountTasksToReminders() {
+      let tasks;
+      try {
+        tasks = JSON.parse(localStorage.getItem(countTasksKey) || "[]");
+        if (!Array.isArray(tasks)) throw new TypeError("課題データの形式が正しくありません。");
+      } catch (error) {
+        console.warn("ju!countの課題を読み込めませんでした。", error);
+        return;
+      }
+      let tasksChanged = false;
+      tasks.forEach((task) => {
+        if (!task.id) {
+          task.id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          tasksChanged = true;
+        }
+      });
+      if (tasksChanged) localStorage.setItem(countTasksKey, JSON.stringify(tasks));
+
+      const taskIds = new Set(tasks.map((task) => task.id));
+      const reminders = readReminders().filter((event) => !event.sourceTaskId || taskIds.has(event.sourceTaskId));
+      tasks.forEach((task) => {
+        const reminder = {
+          id: `ju-count-task-${task.id}`,
+          sourceTaskId: task.id,
+          name: task.name,
+          date: task.date,
+          time: "",
+          note: task.details || ""
+        };
+        const existingIndex = reminders.findIndex((event) => event.sourceTaskId === task.id);
+        if (existingIndex >= 0) reminders[existingIndex] = reminder;
+        else reminders.push(reminder);
+      });
+      writeReminders(reminders);
+    }
     function openReminderDialog(selectedDate = dateKey(new Date())) {
       reminderDate.value = selectedDate;
       reminderDialog.hidden = false;
@@ -171,8 +207,22 @@
     agendaList.addEventListener("click", (event) => {
       const id = event.target.dataset.deleteEvent;
       if (!id) return;
-      writeReminders(readReminders().filter((reminder) => reminder.id !== id));
+      const reminders = readReminders();
+      const deletedReminder = reminders.find((reminder) => reminder.id === id);
+      writeReminders(reminders.filter((reminder) => reminder.id !== id));
+      if (deletedReminder?.sourceTaskId) {
+        const tasks = JSON.parse(localStorage.getItem(countTasksKey) || "[]");
+        localStorage.setItem(countTasksKey, JSON.stringify(tasks.filter((task) => task.id !== deletedReminder.sourceTaskId)));
+      }
       renderReminders();
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key === countTasksKey) {
+        syncCountTasksToReminders();
+        renderReminders();
+      } else if (event.key === reminderKey) {
+        renderReminders();
+      }
     });
     const reminderTheme = document.querySelector("#reminder-theme");
     const reminderDark = localStorage.getItem("ju-tools-dark-mode") === "true";
@@ -197,7 +247,9 @@
       if (event.key === "Escape") toggleReminderMenu(false);
       if (event.key === "Escape" && !reminderDialog.hidden) closeReminderDialog();
     });
+    syncCountTasksToReminders();
     renderReminders();
   </script>
+  <script src="external-link-confirm.js"></script>
 </body>
 </html>

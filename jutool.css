@@ -9,7 +9,7 @@
   --shadow: 0 24px 70px rgba(31, 50, 81, .1);
 }
 * { box-sizing: border-box; }
-html { color-scheme: light; }
+html { color-scheme: light; scrollbar-gutter: stable; }
 body.dark-mode {
   --bg: #101722;
   --surface: #1b2433;
@@ -42,6 +42,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 .tool-header__label { color: var(--accent); font-size: .73rem; font-weight: 900; letter-spacing: .2em; }
 .tool-header__actions { display: flex; gap: 6px; }
 .tool-menu-button, .tool-theme-button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 12px; color: var(--fg); background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); cursor: pointer; font-size: 1.15rem; transition: color .2s, border-color .2s, transform .2s, box-shadow .2s; }
+.tool-menu-button { position: fixed; top: 28px; right: max(20px, calc((100vw - 980px) / 2)); z-index: 9; }
+.tool-theme-button { position: fixed; top: 28px; right: max(58px, calc((100vw - 980px) / 2 + 46px)); z-index: 9; }
 .tool-menu-button:hover, .tool-menu-button:focus-visible, .tool-theme-button:hover, .tool-theme-button:focus-visible { color: var(--accent); border-color: var(--accent); box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12); }
 .tool-theme-button:hover { transform: rotate(20deg); }
 .logo-hero { display: grid; place-items: center; min-height: 49vh; padding: 30px 0 22px; text-align: center; }
@@ -103,5 +105,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 @keyframes logo-glow { 0% { opacity: .65; transform: scale(.65); } 55% { opacity: .25; transform: scale(1.18); } 100% { opacity: 0; transform: scale(1.45); } }
 @media (prefers-reduced-motion: reduce) { .logo__letter { stroke-dashoffset: 0; fill: currentColor; }.logo--running .logo__letter { animation: none; } }
 @media (max-width: 680px) { .tool-home { width: min(calc(100% - 24px), 980px); padding-top: 18px; }.logo-hero { min-height: 42vh; }.tool-grid { grid-template-columns: 1fr; }.tool-card { min-height: 128px; }.tool-card__arrow { position: absolute; right: 22px; bottom: 22px; } }
+@media (max-width: 680px) { .tool-menu-button { top: 18px; right: 12px; }.tool-theme-button { top: 18px; right: 58px; } }
 @media (max-width: 680px) { .reminder-page { padding-top: 30px; }.reminder-heading { align-items: flex-start; flex-direction: column; }.calendar-card, .reminder-agenda { padding: 14px; }.calendar-day { min-height: 62px; padding: 6px; }.calendar-day.is-today { padding: 5px; }.calendar-day small { display: none; }.agenda-item { grid-template-columns: 1fr auto; gap: 5px 10px; }.agenda-item time { grid-column: 1 / -1; } }
 @media (max-width: 480px) { .logo__letter { font-size: 48px; }.calendar-weekdays, .calendar-grid { gap: 3px; }.calendar-day { min-height: 48px; padding: 5px; }.calendar-day.is-today { padding: 4px; }.calendar-day > span { font-size: .7rem; } }

@@ -30,6 +30,7 @@
       <div class="countdown" id="countdown" aria-label="残り時間">00:00</div>
       <p id="countdown-caption" class="countdown-caption">終了まで</p>
       <p id="bell-countdown" class="bell-countdown" hidden></p>
+      <p id="lesson-start-countdown" class="lesson-start-countdown" hidden></p>
       <div class="progress-track" role="progressbar" aria-label="時限の進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div id="progress-bar" class="progress-bar"></div>
       </div>
@@ -164,7 +165,14 @@
           <button class="color-option" type="button" data-color="#c2185b" aria-label="ローズ" title="ローズ"></button>
           <button class="color-option" type="button" data-color="#5c6bc0" aria-label="インディゴ" title="インディゴ"></button>
           <button class="color-option" type="button" data-color="#495057" aria-label="スレート" title="スレート"></button>
+          <button class="color-option color-option--rainbow" type="button" data-color="rainbow" aria-label="虹色" title="虹色"></button>
         </div>
+        <button id="rainbow-settings-open" class="schedule-view-button rainbow-settings-open" type="button">虹色アニメーションの設定</button>
+      </div>
+      <div class="setting-group">
+        <strong>授業終了のクラッカー</strong>
+        <p class="cracker-setting-description">授業終了時に表示するクラッカーの量を設定できます。</p>
+        <button id="cracker-settings-open" class="schedule-view-button" type="button">クラッカー設定・プレビュー</button>
       </div>
       <button id="show-schedule-button" class="schedule-view-button" type="button">本日の校時を表示</button>
       <section id="schedule-panel" class="schedule-panel" hidden>
@@ -174,6 +182,36 @@
         </div>
         <ol id="schedule-list" class="schedule-list"></ol>
       </section>
+    </section>
+  </div>
+  <div id="rainbow-settings-overlay" class="settings-overlay rainbow-settings-overlay" hidden>
+    <section class="rainbow-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="rainbow-settings-title">
+      <div class="settings-panel__header">
+        <h2 id="rainbow-settings-title">虹色アニメーション</h2>
+        <button id="rainbow-settings-close" class="close-button" type="button" aria-label="アニメーション設定を閉じる">×</button>
+      </div>
+      <label class="rainbow-speed-label" for="rainbow-speed">色が一周する時間</label>
+      <input id="rainbow-speed" class="rainbow-speed" type="range" min="3" max="30" step="1" value="14">
+      <div class="rainbow-speed-range"><span>速い</span><output id="rainbow-speed-value" for="rainbow-speed">14秒</output><span>ゆっくり</span></div>
+      <p class="rainbow-speed-hint">秒数が小さいほど速く、大きいほどゆっくり動きます。</p>
+    </section>
+  </div>
+  <div id="cracker-settings-overlay" class="settings-overlay rainbow-settings-overlay" hidden>
+    <section class="rainbow-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="cracker-settings-title">
+      <div class="settings-panel__header">
+        <h2 id="cracker-settings-title">クラッカー設定</h2>
+        <button id="cracker-settings-close" class="close-button" type="button" aria-label="クラッカー設定を閉じる">×</button>
+      </div>
+      <label class="rainbow-speed-label" for="cracker-level">クラッカーの量</label>
+      <select id="cracker-level" class="cracker-level">
+        <option value="none">なし（0個）</option>
+        <option value="few">少なめ（12個）</option>
+        <option value="normal">普通（32個）</option>
+        <option value="more">多め（60個）</option>
+        <option value="many">大量（100個）</option>
+      </select>
+      <p class="rainbow-speed-hint">量を少なくすると、端末への負荷を抑えられます。</p>
+      <button id="cracker-preview" class="schedule-view-button cracker-preview" type="button">プレビュー</button>
     </section>
   </div>
   <div id="mode-onboarding" class="settings-overlay" hidden>
@@ -194,6 +232,8 @@
       </div>
     </section>
   </div>
+  <div id="class-celebration" class="class-celebration" aria-hidden="true"></div>
   <script src="script.js"></script>
+  <script src="external-link-confirm.js"></script>
 </body>
 </html>
