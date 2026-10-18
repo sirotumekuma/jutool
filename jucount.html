@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="校時表に合わせて現在の時限と残り時間を表示する、ju!count。">
   <title>ju!count</title>
+  <link rel="icon" type="image/png" href="jutool.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -49,9 +50,9 @@
     <footer>
       <p>時刻は端末の現在時刻を使用しています</p>
       <nav aria-label="サイト情報">
-        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
-        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
-        <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+        <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+        <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
+        <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
       </nav>
     </footer>
   </main>
@@ -65,9 +66,9 @@
       <a href="jucount.html">ju!count</a>
       <a href="memo.html">ju!memo</a>
       <a href="ju-remoinder.html">ju!remoinder</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
-      <a href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
+      <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+      <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
+      <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
     </nav>
     <div class="menu-calendar">
       <strong>課題カレンダー</strong>
@@ -194,6 +195,21 @@
       <input id="rainbow-speed" class="rainbow-speed" type="range" min="3" max="30" step="1" value="14">
       <div class="rainbow-speed-range"><span>速い</span><output id="rainbow-speed-value" for="rainbow-speed">14秒</output><span>ゆっくり</span></div>
       <p class="rainbow-speed-hint">秒数が小さいほど速く、大きいほどゆっくり動きます。</p>
+      <label class="rainbow-speed-label" for="rainbow-direction">色の移動方向</label>
+      <select id="rainbow-direction" class="rainbow-direction">
+        <option value="left-to-right">左から右</option>
+        <option value="right-to-left">右から左</option>
+      </select>
+      <fieldset class="rainbow-colors">
+        <legend>虹色の配色</legend>
+        <label>色1<input class="rainbow-color" type="color" value="#9d174d" aria-label="虹色の色1"></label>
+        <label>色2<input class="rainbow-color" type="color" value="#c2410c" aria-label="虹色の色2"></label>
+        <label>色3<input class="rainbow-color" type="color" value="#a16207" aria-label="虹色の色3"></label>
+        <label>色4<input class="rainbow-color" type="color" value="#047857" aria-label="虹色の色4"></label>
+        <label>色5<input class="rainbow-color" type="color" value="#1d4ed8" aria-label="虹色の色5"></label>
+        <label>色6<input class="rainbow-color" type="color" value="#6b21a8" aria-label="虹色の色6"></label>
+      </fieldset>
+      <button id="rainbow-colors-reset" class="secondary-button rainbow-colors-reset" type="button">色を初期配色に戻す</button>
     </section>
   </div>
   <div id="cracker-settings-overlay" class="settings-overlay rainbow-settings-overlay" hidden>

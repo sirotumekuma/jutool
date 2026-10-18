@@ -48,9 +48,13 @@ const reminderStorageKey = "ju-remoinder-events";
 const scheduleModes = ["normal", "short", "test"];
 const BELL_COUNTDOWN_SECONDS = 41;
 const RAINBOW_SPEED_STORAGE_KEY = "ju-count-rainbow-speed";
+const RAINBOW_DIRECTION_STORAGE_KEY = "ju-count-rainbow-direction";
+const RAINBOW_COLORS_STORAGE_KEY = "ju-count-rainbow-colors";
 const DEFAULT_RAINBOW_SPEED = 14;
 const MIN_RAINBOW_SPEED = 3;
 const MAX_RAINBOW_SPEED = 30;
+const DEFAULT_RAINBOW_COLORS = ["#9d174d", "#c2410c", "#a16207", "#047857", "#1d4ed8", "#6b21a8"];
+const RAINBOW_DIRECTIONS = ["left-to-right", "right-to-left"];
 const CRACKER_LEVEL_STORAGE_KEY = "ju-count-cracker-level";
 const CRACKER_LEVEL_COUNTS = { none: 0, few: 12, normal: 32, more: 60, many: 100 };
 let previousLesson = null;
@@ -84,6 +88,22 @@ const storedRainbowSpeed = Number(localStorage.getItem(RAINBOW_SPEED_STORAGE_KEY
 const savedRainbowSpeed = Number.isFinite(storedRainbowSpeed)
   ? Math.min(MAX_RAINBOW_SPEED, Math.max(MIN_RAINBOW_SPEED, storedRainbowSpeed))
   : DEFAULT_RAINBOW_SPEED;
+const storedRainbowDirection = localStorage.getItem(RAINBOW_DIRECTION_STORAGE_KEY);
+const savedRainbowDirection = RAINBOW_DIRECTIONS.includes(storedRainbowDirection) ? storedRainbowDirection : "left-to-right";
+const storedRainbowColors = localStorage.getItem(RAINBOW_COLORS_STORAGE_KEY);
+let savedRainbowColors = DEFAULT_RAINBOW_COLORS;
+if (storedRainbowColors) {
+  try {
+    const parsedColors = JSON.parse(storedRainbowColors);
+    if (Array.isArray(parsedColors) && parsedColors.length === DEFAULT_RAINBOW_COLORS.length && parsedColors.every((color) => /^#[\da-f]{6}$/i.test(color))) {
+      savedRainbowColors = parsedColors;
+    } else {
+      console.warn("保存済み虹色配色の形式が不正です。既定の配色を使用します。");
+    }
+  } catch (error) {
+    console.warn("保存済み虹色配色を読み込めませんでした。", error);
+  }
+}
 const storedCrackerLevel = localStorage.getItem(CRACKER_LEVEL_STORAGE_KEY);
 const savedCrackerLevel = Object.hasOwn(CRACKER_LEVEL_COUNTS, storedCrackerLevel) ? storedCrackerLevel : "normal";
 const savedDarkMode = localStorage.getItem("ju-count-dark-mode") === "true";
@@ -147,6 +167,9 @@ const settings = {
   rainbowSettingsClose: document.querySelector("#rainbow-settings-close"),
   rainbowSpeed: document.querySelector("#rainbow-speed"),
   rainbowSpeedValue: document.querySelector("#rainbow-speed-value"),
+  rainbowDirection: document.querySelector("#rainbow-direction"),
+  rainbowColors: document.querySelectorAll(".rainbow-color"),
+  rainbowColorsReset: document.querySelector("#rainbow-colors-reset"),
   crackerOverlay: document.querySelector("#cracker-settings-overlay"),
   crackerSettingsOpen: document.querySelector("#cracker-settings-open"),
   crackerSettingsClose: document.querySelector("#cracker-settings-close"),
@@ -187,6 +210,26 @@ function setRainbowSpeed(speed) {
   localStorage.setItem(RAINBOW_SPEED_STORAGE_KEY, String(normalizedSpeed));
 }
 
+function setRainbowDirection(direction) {
+  if (!RAINBOW_DIRECTIONS.includes(direction)) throw new Error(`虹色アニメーションの方向が不正です: ${direction}`);
+  document.documentElement.style.setProperty("--rainbow-direction", direction === "left-to-right" ? "reverse" : "normal");
+  settings.rainbowDirection.value = direction;
+  localStorage.setItem(RAINBOW_DIRECTION_STORAGE_KEY, direction);
+}
+
+function setRainbowColors(colors) {
+  if (colors.length !== DEFAULT_RAINBOW_COLORS.length || !colors.every((color) => /^#[\da-f]{6}$/i.test(color))) {
+    throw new Error("虹色の配色が不正です。");
+  }
+  const gradientColors = [...colors, ...colors];
+  document.documentElement.style.setProperty("--rainbow-gradient", `linear-gradient(90deg, ${gradientColors.join(", ")})`);
+  document.documentElement.style.setProperty("--rainbow-preview-gradient", `conic-gradient(${colors.join(", ")})`);
+  settings.rainbowColors.forEach((input, index) => {
+    input.value = colors[index];
+  });
+  localStorage.setItem(RAINBOW_COLORS_STORAGE_KEY, JSON.stringify(colors));
+}
+
 function toggleRainbowSettings(open) {
   settings.rainbowOverlay.hidden = !open;
   if (open) settings.rainbowSettingsClose.focus();
@@ -206,6 +249,7 @@ function showConfetti(count) {
   const colors = ["#ff4d6d", "#ff9f1c", "#ffd60a", "#2ec4b6", "#3a86ff", "#8338ec"];
   window.clearTimeout(confettiTimeout);
   celebration.replaceChildren();
+  celebration.classList.toggle("is-active", count > 0);
   for (let index = 0; index < count; index += 1) {
     const piece = document.createElement("span");
     piece.className = "class-confetti__piece";
@@ -217,7 +261,29 @@ function showConfetti(count) {
     celebration.appendChild(piece);
   }
   if (count > 0) {
-    confettiTimeout = window.setTimeout(() => celebration.replaceChildren(), 4000);
+    const burstCount = Math.min(4, Math.ceil(count / 30));
+    for (let burstIndex = 0; burstIndex < burstCount; burstIndex += 1) {
+      const burstSize = 24;
+      const burstCenterX = burstIndex % 2 === 0 ? 14 : 86;
+      const burstCenterY = 34 + Math.random() * 16;
+      for (let index = 0; index < burstSize; index += 1) {
+        const angle = (Math.PI * 2 * index) / burstSize + Math.random() * 0.12;
+        const distance = 70 + Math.random() * 90;
+        const spark = document.createElement("span");
+        spark.className = `class-confetti__piece class-confetti__piece--burst${index % 4 === 0 ? " class-confetti__piece--star" : index % 4 === 1 ? " class-confetti__piece--streamer" : ""}`;
+        spark.style.left = `${burstCenterX}%`;
+        spark.style.top = `${burstCenterY}%`;
+        spark.style.backgroundColor = colors[(index + burstIndex * 2) % colors.length];
+        spark.style.setProperty("--burst-x", `${Math.cos(angle) * distance}px`);
+        spark.style.setProperty("--burst-y", `${Math.sin(angle) * distance}px`);
+        spark.style.animationDelay = `${burstIndex * 0.16}s`;
+        celebration.appendChild(spark);
+      }
+    }
+    confettiTimeout = window.setTimeout(() => {
+      celebration.replaceChildren();
+      celebration.classList.remove("is-active");
+    }, 4000);
   }
 }
 
@@ -577,6 +643,11 @@ settings.rainbowOverlay.addEventListener("click", (event) => {
   if (event.target === settings.rainbowOverlay) toggleRainbowSettings(false);
 });
 settings.rainbowSpeed.addEventListener("input", (event) => setRainbowSpeed(event.target.value));
+settings.rainbowDirection.addEventListener("change", (event) => setRainbowDirection(event.target.value));
+settings.rainbowColors.forEach((input) => {
+  input.addEventListener("input", () => setRainbowColors(Array.from(settings.rainbowColors, (colorInput) => colorInput.value)));
+});
+settings.rainbowColorsReset.addEventListener("click", () => setRainbowColors(DEFAULT_RAINBOW_COLORS));
 settings.crackerSettingsOpen.addEventListener("click", () => {
   settings.crackerOverlay.hidden = false;
   settings.crackerSettingsClose.focus();
@@ -670,6 +741,8 @@ document.addEventListener("keydown", (event) => {
 
 setThemeColor(savedColor);
 setRainbowSpeed(savedRainbowSpeed);
+setRainbowDirection(savedRainbowDirection);
+setRainbowColors(savedRainbowColors);
 setCrackerLevel(savedCrackerLevel);
 setDarkMode(savedDarkMode);
 setMode(currentMode);
