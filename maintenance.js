@@ -10,12 +10,12 @@ if (maintenanceMode) {
   const banner = document.createElement("div");
   banner.className = "maintenance-banner";
   banner.setAttribute("role", "status");
-  banner.textContent = "セキュリティメンテナンスのため、現在サイトは一時的に利用できません。ご不便をおかけして申し訳ありません。";
+  banner.textContent = "セキュリティメンテナンスのため、現在サイトは一時的に利用できません。ご不便をおかけして申し訳ありません。また、このメンテナンスは10/23に終了予定です。";
 
   const screen = document.createElement("div");
   screen.className = "maintenance-screen";
   screen.setAttribute("role", "alert");
-  screen.textContent = "メンテナンス中はサービスをご利用いただけません。";
+  screen.textContent = "メンテナンス中はサービスをご利用いただけません。ご不便をおかけしますがよろしくお願いいたします。";
 
   document.body.prepend(banner);
   document.body.append(screen);
