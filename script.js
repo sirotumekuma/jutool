@@ -44,6 +44,7 @@ const modeLabels = { normal: "通常校時", short: "短縮校時", test: "テ�
 const scheduleStorageKey = "ju-count-schedules";
 const groupStorageKey = "ju-count-schedule-groups";
 const taskStorageKey = "ju-count-tasks";
+const memoStorageKey = "ju-countool-memos";
 const reminderStorageKey = "ju-remoinder-events";
 const scheduleModes = ["normal", "short", "test"];
 const BELL_COUNTDOWN_SECONDS = 41;
@@ -64,6 +65,8 @@ function cloneSchedules(schedules) {
   return JSON.parse(JSON.stringify(schedules));
 }
 
+const defaultSchedules = cloneSchedules(schoolSchedules);
+
 function normalizeSchedules(schedules) {
   scheduleModes.forEach((mode) => {
     if (!Array.isArray(schedules[mode])) return;
@@ -83,7 +86,8 @@ if (storedSchedules) {
 normalizeSchedules(schoolSchedules);
 const savedMode = localStorage.getItem("ju-count-mode");
 let currentMode = savedMode && schoolSchedules[savedMode] ? savedMode : "normal";
-const savedColor = localStorage.getItem("ju-count-color") || "#007bff";
+const storedColor = localStorage.getItem("ju-count-color") || "#007bff";
+const savedColor = storedColor === "rainbow" || /^#[\da-f]{6}$/i.test(storedColor) ? storedColor : "#007bff";
 const storedRainbowSpeed = Number(localStorage.getItem(RAINBOW_SPEED_STORAGE_KEY));
 const savedRainbowSpeed = Number.isFinite(storedRainbowSpeed)
   ? Math.min(MAX_RAINBOW_SPEED, Math.max(MIN_RAINBOW_SPEED, storedRainbowSpeed))
@@ -147,6 +151,7 @@ const settings = {
   button: document.querySelector("#settings-button"),
   close: document.querySelector("#settings-close"),
   darkMode: document.querySelector("#dark-mode-toggle"),
+  themeButton: document.querySelector("#count-theme-button"),
   scheduleButton: document.querySelector("#show-schedule-button"),
   schedulePanel: document.querySelector("#schedule-panel"),
   modeOnboarding: document.querySelector("#mode-onboarding"),
@@ -154,7 +159,10 @@ const settings = {
   scheduleEditorOverlay: document.querySelector("#schedule-editor-overlay"),
   scheduleEditorClose: document.querySelector("#schedule-editor-close"),
   scheduleEditMode: document.querySelector("#schedule-edit-mode"),
+  scheduleCsvImportButton: document.querySelector("#schedule-csv-import-button"),
+  scheduleCsvFile: document.querySelector("#schedule-csv-file"),
   scheduleEditor: document.querySelector("#schedule-editor"),
+  scheduleReset: document.querySelector("#schedule-reset-button"),
   addPeriod: document.querySelector("#add-period-button"),
   groupName: document.querySelector("#group-name"),
   saveGroup: document.querySelector("#save-group-button"),
@@ -174,8 +182,17 @@ const settings = {
   crackerSettingsOpen: document.querySelector("#cracker-settings-open"),
   crackerSettingsClose: document.querySelector("#cracker-settings-close"),
   crackerLevel: document.querySelector("#cracker-level"),
-  crackerPreview: document.querySelector("#cracker-preview")
+  crackerPreview: document.querySelector("#cracker-preview"),
+  customColor: document.querySelector("#custom-theme-color")
 };
+
+function isLightColor(color) {
+  const channels = color.slice(1).match(/.{2}/g).map((channel) => Number.parseInt(channel, 16) / 255);
+  const luminance = channels
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+    .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+  return luminance >= 0.72;
+}
 
 function setThemeColor(color) {
   const colorMap = {
@@ -196,6 +213,8 @@ function setThemeColor(color) {
   document.documentElement.style.setProperty("--accent", accent);
   document.documentElement.style.setProperty("--accent-dark", colorMap[accent] || accent);
   elements.statusCard.classList.toggle("is-rainbow", isRainbow);
+  elements.statusCard.classList.toggle("is-light-theme", !isRainbow && isLightColor(color));
+  if (!isRainbow) settings.customColor.value = color;
   document.querySelectorAll(".color-option").forEach((option) => option.classList.toggle("is-selected", option.dataset.color === color));
   localStorage.setItem("ju-count-color", color);
 }
@@ -221,9 +240,11 @@ function setRainbowColors(colors) {
   if (colors.length !== DEFAULT_RAINBOW_COLORS.length || !colors.every((color) => /^#[\da-f]{6}$/i.test(color))) {
     throw new Error("虹色の配色が不正です。");
   }
+  const containsLightColor = colors.some(isLightColor);
   const gradientColors = [...colors, ...colors];
   document.documentElement.style.setProperty("--rainbow-gradient", `linear-gradient(90deg, ${gradientColors.join(", ")})`);
   document.documentElement.style.setProperty("--rainbow-preview-gradient", `conic-gradient(${colors.join(", ")})`);
+  elements.statusCard.classList.toggle("is-rainbow-light", containsLightColor);
   settings.rainbowColors.forEach((input, index) => {
     input.value = colors[index];
   });
@@ -309,8 +330,8 @@ function toggleMenu(open) {
 function renderTasks(events) {
   appUi.tasksList.innerHTML = events.map((event) => `
     <li class="task-item">
-      <span>${escapeHtml(event.summary)}</span>
-      <time datetime="${event.date.toISOString()}">${event.date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</time>
+      <span class="task-item__content">${escapeHtml(event.summary)}${event.details ? `<small>${escapeHtml(event.details)}</small>` : ""}</span>
+      ${event.date ? `<time datetime="${event.date.toISOString()}">${event.date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</time>` : '<span class="task-item__type">メモ</span>'}
     </li>
   `).join("");
   appUi.tasksEmpty.hidden = events.length > 0;
@@ -320,11 +341,25 @@ function renderSavedTasks() {
   const tasks = JSON.parse(localStorage.getItem(taskStorageKey) || "[]")
     .filter((task) => task.reflect)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 10);
-  renderTasks(tasks.map((task) => ({
+    .slice(0, 10)
+    .map((task) => ({
     summary: task.name,
-    date: new Date(`${task.date}T00:00:00`)
-  })));
+    date: task.date ? new Date(`${task.date}T00:00:00`) : null,
+    details: task.details || ""
+  }));
+  let memos = [];
+  try {
+    const storedMemos = JSON.parse(localStorage.getItem(memoStorageKey) || "[]");
+    if (!Array.isArray(storedMemos)) throw new TypeError("メモデータの形式が正しくありません。");
+    memos = storedMemos.filter((memo) => memo.reflect).map((memo) => ({
+      summary: memo.title || "新しいメモ",
+      date: null,
+      details: memo.body || ""
+    }));
+  } catch (error) {
+    console.warn("ju!memoの反映内容を読み込めませんでした。", error);
+  }
+  renderTasks([...tasks, ...memos].slice(0, 10));
 }
 
 function syncTasksToReminders(tasks) {
@@ -482,6 +517,109 @@ function updateEditorSchedule() {
   })).filter((period) => period.start && period.end);
   normalizeSchedules(schoolSchedules);
   persistSchedules();
+  update();
+}
+
+function parseCsvRecords(text) {
+  const records = [];
+  let record = [];
+  let field = "";
+  let inQuotes = false;
+  let afterQuote = false;
+
+  const finishField = () => {
+    record.push(field);
+    field = "";
+    afterQuote = false;
+  };
+  const finishRecord = () => {
+    finishField();
+    if (record.some((value) => value.trim())) records.push(record);
+    record = [];
+  };
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (inQuotes) {
+      if (character === '"' && text[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else if (character === '"') {
+        inQuotes = false;
+        afterQuote = true;
+      } else {
+        field += character;
+      }
+    } else if (afterQuote && character !== "," && character !== "\r" && character !== "\n" && !/\s/.test(character)) {
+      throw new Error("CSVの引用符の後に不正な文字があります。");
+    } else if (character === '"' && field.length === 0) {
+      inQuotes = true;
+    } else if (character === ",") {
+      finishField();
+    } else if (character === "\r" || character === "\n") {
+      finishRecord();
+      if (character === "\r" && text[index + 1] === "\n") index += 1;
+    } else if (!afterQuote || !/\s/.test(character)) {
+      field += character;
+    }
+  }
+  if (inQuotes) throw new Error("CSVの引用符が閉じられていません。");
+  if (field || record.length) finishRecord();
+  return records;
+}
+
+function importScheduleCsv(text) {
+  const records = parseCsvRecords(text.replace(/^\uFEFF/, ""));
+  if (!records.length) throw new Error("CSVに読み込めるデータがありません。");
+
+  const headers = records.shift().map((header) => header.trim());
+  const requiredHeaders = ["校時", "名称", "開始時刻", "終了時刻"];
+  const columns = requiredHeaders.map((header) => headers.indexOf(header));
+  if (columns.some((index) => index < 0) || new Set(columns).size !== requiredHeaders.length) {
+    throw new Error("CSVの1行目に「校時,名称,開始時刻,終了時刻」の列が必要です。");
+  }
+
+  const modeAliases = {
+    normal: ["normal", "通常校時", "通常"],
+    short: ["short", "短縮校時", "短縮"],
+    test: ["test", "テスト校時", "テスト"]
+  };
+  const schedules = { normal: [], short: [], test: [] };
+  records.forEach((row, index) => {
+    const lineNumber = index + 2;
+    if (row.length !== headers.length) {
+      throw new Error(`${lineNumber}行目の列数がヘッダーと一致しません。`);
+    }
+    const values = columns.map((column) => row[column].trim());
+    const [modeValue, name, start, end] = values;
+    const mode = scheduleModes.find((key) => modeAliases[key].includes(modeValue));
+    if (!mode) throw new Error(`${lineNumber}行目の校時は normal / short / test のいずれかで指定してください。`);
+    if (!name) throw new Error(`${lineNumber}行目の名称が空です。`);
+    const isValidTime = (value) => {
+      const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+      return Boolean(match);
+    };
+    if (!isValidTime(start) || !isValidTime(end) || start >= end) {
+      throw new Error(`${lineNumber}行目の時刻が不正です。開始時刻・終了時刻をHH:MM形式で指定してください。`);
+    }
+    schedules[mode].push({ name, start, end, isBreak: name === "昼休み" });
+  });
+
+  const importedCount = Object.values(schedules).reduce((total, schedule) => total + schedule.length, 0);
+  if (!importedCount) throw new Error("CSVに読み込める時間割がありません。");
+
+  updateEditorSchedule();
+  scheduleModes.forEach((mode) => {
+    schoolSchedules[mode].push(...schedules[mode]);
+  });
+  persistSchedules();
+  update();
+  renderScheduleEditor();
+  const summary = scheduleModes
+    .filter((mode) => schedules[mode].length)
+    .map((mode) => `${modeLabels[mode]} ${schedules[mode].length}件`)
+    .join("、");
+  settings.editorMessage.textContent = `CSVから${importedCount}件追加しました（${summary}）。`;
 }
 
 function loadGroups() {
@@ -519,8 +657,24 @@ function loadGroup() {
   if (!name || !groups[name]) return;
   Object.assign(schoolSchedules, normalizeSchedules(cloneSchedules(groups[name])));
   persistSchedules();
+  update();
   renderScheduleEditor();
-  settings.editorMessage.textContent = `「${name}」を読み込みました。次回起動時から反映されます。`;
+  settings.editorMessage.textContent = `「${name}」を読み込みました。時間割に反映しました。`;
+}
+
+function resetSchedules() {
+  const language = document.documentElement.lang;
+  const confirmation = language === "en"
+    ? "Reset all timetable modes to their initial schedules? Saved groups will be kept."
+    : language === "zh"
+      ? "将所有课程表模式恢复为初始课程表？已保存的分组会保留。"
+      : "すべての校時を初期時間割に戻します。保存済みグループは残ります。よろしいですか？";
+  if (!window.confirm(confirmation)) return;
+  Object.assign(schoolSchedules, cloneSchedules(defaultSchedules));
+  persistSchedules();
+  update();
+  renderScheduleEditor();
+  settings.editorMessage.textContent = "時間割を初期状態に戻しました。";
 }
 
 function toggleScheduleEditor(open) {
@@ -619,7 +773,7 @@ function update() {
 }
 
 document.querySelectorAll(".mode-option").forEach((button) => {
-  button.addEventListener("click", () => setMode(button.dataset.mode, false));
+  button.addEventListener("click", () => setMode(button.dataset.mode));
 });
 document.querySelectorAll(".onboarding-option").forEach((button) => {
   button.addEventListener("click", () => {
@@ -634,6 +788,9 @@ settings.overlay.addEventListener("click", (event) => {
   if (event.target === settings.overlay) toggleSettings(false);
 });
 settings.darkMode.addEventListener("change", (event) => setDarkMode(event.target.checked));
+settings.themeButton.addEventListener("click", () => {
+  setDarkMode(!document.body.classList.contains("dark-mode"));
+});
 document.querySelectorAll(".color-option").forEach((option) => {
   option.addEventListener("click", () => setThemeColor(option.dataset.color));
 });
@@ -680,6 +837,21 @@ settings.scheduleEditorOverlay.addEventListener("click", (event) => {
   if (event.target === settings.scheduleEditorOverlay) toggleScheduleEditor(false);
 });
 settings.scheduleEditMode.addEventListener("change", renderScheduleEditor);
+settings.scheduleReset.addEventListener("click", resetSchedules);
+settings.customColor.addEventListener("input", (event) => setThemeColor(event.target.value));
+settings.scheduleCsvImportButton.addEventListener("click", () => settings.scheduleCsvFile.click());
+settings.scheduleCsvFile.addEventListener("change", async () => {
+  const file = settings.scheduleCsvFile.files[0];
+  if (!file) return;
+  try {
+    importScheduleCsv(await file.text());
+  } catch (error) {
+    console.warn("時間割CSVを読み込めませんでした。", error);
+    settings.editorMessage.textContent = `CSVを読み込めませんでした: ${error.message}`;
+  } finally {
+    settings.scheduleCsvFile.value = "";
+  }
+});
 settings.scheduleEditor.addEventListener("change", updateEditorSchedule);
 settings.scheduleEditor.addEventListener("click", (event) => {
   if (!event.target.classList.contains("remove-period-button")) return;
@@ -691,6 +863,8 @@ settings.addPeriod.addEventListener("click", () => {
   schoolSchedules[settings.scheduleEditMode.value].push({
   name: "新しい予定", start: "00:00", end: "00:30", isBreak: false
   });
+  persistSchedules();
+  update();
   renderScheduleEditor();
 });
 settings.saveGroup.addEventListener("click", saveGroup);
@@ -726,7 +900,7 @@ appUi.taskForm.addEventListener("submit", (event) => {
   appUi.taskMessage.textContent = "課題を保存しました。";
 });
 window.addEventListener("storage", (event) => {
-  if (event.key === taskStorageKey) renderSavedTasks();
+  if (event.key === taskStorageKey || event.key === memoStorageKey) renderSavedTasks();
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !settings.crackerOverlay.hidden) {

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="校時表に合わせて現在の時限と残り時間を表示する、ju!count。">
   <title>ju!count</title>
-  <link rel="icon" type="image/png" href="jutool.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" type="image/png" href="jutool.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,7 +17,11 @@
         <h1>ju!count</h1>
       </div>
       <div class="header-actions">
+        <select class="language-select" data-language-selector aria-label="表示言語">
+          <option value="ja">日本語</option><option value="en">English</option><option value="zh">中文</option>
+        </select>
         <time id="current-date" class="current-date" datetime=""></time>
+        <button id="count-theme-button" class="theme-toggle-button" type="button" aria-label="ダークモードに切り替え">◐</button>
         <button id="menu-button" class="menu-button tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
         <button id="settings-button" class="settings-button" type="button" aria-label="設定を開く" aria-expanded="false">⚙</button>
       </div>
@@ -65,7 +70,7 @@
       <a href="index.html">ju!tool ホーム</a>
       <a href="jucount.html">ju!count</a>
       <a href="memo.html">ju!memo</a>
-      <a href="ju-remoinder.html">ju!remoinder</a>
+      <a href="ju-reminder.html">ju!reminder</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
@@ -133,8 +138,14 @@
                 <option value="test">テスト校時</option>
               </select>
             </div>
+            <div class="schedule-csv-tools">
+              <button id="schedule-csv-import-button" class="secondary-button" type="button">CSVから時間割を追加</button>
+              <input id="schedule-csv-file" type="file" accept=".csv,text/csv" hidden>
+              <p>「校時,名称,開始時刻,終了時刻」の列を含むCSVに対応します。校時は normal / short / test または通常校時 / 短縮校時 / テスト校時で指定してください。</p>
+            </div>
             <div id="schedule-editor" class="schedule-editor"></div>
             <button id="add-period-button" class="secondary-button" type="button">＋ 時限を追加</button>
+            <button id="schedule-reset-button" class="secondary-button" type="button">時間割を初期状態に戻す</button>
             <div class="schedule-group-actions">
               <input id="group-name" type="text" maxlength="30" placeholder="保存するグループ名">
               <button id="save-group-button" class="schedule-view-button" type="button">グループとして保存</button>
@@ -168,6 +179,7 @@
           <button class="color-option" type="button" data-color="#495057" aria-label="スレート" title="スレート"></button>
           <button class="color-option color-option--rainbow" type="button" data-color="rainbow" aria-label="虹色" title="虹色"></button>
         </div>
+        <label class="custom-color-picker"><span>カスタムカラー（単色）</span><input id="custom-theme-color" type="color" value="#007bff" aria-label="カスタムカラー"></label>
         <button id="rainbow-settings-open" class="schedule-view-button rainbow-settings-open" type="button">虹色アニメーションの設定</button>
       </div>
       <div class="setting-group">
@@ -251,5 +263,7 @@
   <div id="class-celebration" class="class-celebration" aria-hidden="true"></div>
   <script src="script.js"></script>
   <script src="external-link-confirm.js"></script>
+  <script src="maintenance.js"></script>
+  <script src="i18n.js"></script>
 </body>
 </html>

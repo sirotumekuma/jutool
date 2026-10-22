@@ -19,6 +19,8 @@ body.dark-mode {
   --shadow: 0 24px 70px rgba(0, 0, 0, .32);
   color-scheme: dark;
 }
+.maintenance-banner { padding: 12px 20px; border-bottom: 1px solid #fed7aa; color: #9a3412; background: #fff7ed; font-size: .88rem; font-weight: 700; line-height: 1.5; text-align: center; }
+body.dark-mode .maintenance-banner { border-color: #7c2d12; color: #fed7aa; background: #431407; }
 body {
   min-width: 280px;
   min-height: 100vh;
@@ -41,6 +43,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 .tool-header { display: flex; align-items: center; justify-content: space-between; height: 54px; }
 .tool-header__label { color: var(--accent); font-size: .73rem; font-weight: 900; letter-spacing: .2em; }
 .tool-header__actions { display: flex; gap: 6px; }
+.language-select { position: fixed; top: 28px; right: max(150px, calc((100vw - 980px) / 2 + 138px)); z-index: 10; max-width: 92px; padding: 7px 5px; border: 1px solid var(--line); border-radius: 9px; color: var(--fg); background: var(--surface); font-size: .72rem; }
 .tool-menu-button, .tool-theme-button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 12px; color: var(--fg); background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); cursor: pointer; font-size: 1.15rem; transition: color .2s, border-color .2s, transform .2s, box-shadow .2s; }
 .tool-menu-button { position: fixed; top: 28px; right: max(20px, calc((100vw - 980px) / 2)); z-index: 9; }
 .tool-theme-button { position: fixed; top: 28px; right: max(58px, calc((100vw - 980px) / 2 + 46px)); z-index: 9; }
@@ -68,7 +71,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 .tool-card::after { display: none; }
 .tool-card:hover, .tool-card:focus-visible { border-color: var(--card-accent); box-shadow: var(--shadow); transform: translateY(-4px); }
 .tool-card__icon { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 16px; color: #fff; background: var(--card-accent); font-size: 1.65rem; }
-.tool-card--count { --card-accent: #2563eb; }.tool-card--memo { --card-accent: #64748b; }.tool-card--remoinder { --card-accent: #16a66a; }
+.tool-card--count { --card-accent: #2563eb; }.tool-card--memo { --card-accent: #64748b; }.tool-card--reminder { --card-accent: #16a66a; }
 .tool-card strong, .tool-card small { display: block; }.tool-card strong { font-size: 1.05rem; letter-spacing: -.02em; }.tool-card small { margin-top: 5px; color: var(--muted); font-size: .76rem; line-height: 1.5; }.tool-card__arrow { margin-top: auto; color: var(--card-accent); font-size: 1.25rem; }
 .tool-menu { position: fixed; inset: 0 0 0 auto; z-index: 10; width: min(88vw, 360px); padding: 26px 20px; color: var(--fg); background: rgba(255,255,255,0.9); backdrop-filter: blur(18px); box-shadow: -18px 0 45px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .25s ease; }
 .tool-menu.is-open { transform: translateX(0); }
@@ -81,9 +84,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 .tool-link:hover, .tool-link:focus-visible { color: var(--accent); border-color: var(--accent); box-shadow: 0 10px 20px rgba(37, 99, 235, 0.1); transform: translateY(-1px); }
 .tool-link { width: 100%; text-align: left; }
 .tool-link--footer { width: auto; }
-.tool-link--external { display: inline-flex; align-items: center; justify-content: center; }
+.tool-link--external { display: inline-flex; align-items: center; justify-content: flex-start; }
 .tool-footer { padding-top: 18px; }
-.tool-footer__nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.tool-footer__nav { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px; }
 .info-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(10, 17, 30, .48); backdrop-filter: blur(8px); }
 .info-panel { width: min(100%, 680px); max-height: 84vh; overflow: auto; padding: 24px 22px 20px; border: 1px solid rgba(255,255,255,.18); border-radius: 22px; background: rgba(255,255,255,0.9); box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22); }
 .info-panel__header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
@@ -105,6 +108,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 @keyframes logo-glow { 0% { opacity: .65; transform: scale(.65); } 55% { opacity: .25; transform: scale(1.18); } 100% { opacity: 0; transform: scale(1.45); } }
 @media (prefers-reduced-motion: reduce) { .logo__letter { stroke-dashoffset: 0; fill: currentColor; }.logo--running .logo__letter { animation: none; } }
 @media (max-width: 680px) { .tool-home { width: min(calc(100% - 24px), 980px); padding-top: 18px; }.logo-hero { min-height: 42vh; }.tool-grid { grid-template-columns: 1fr; }.tool-card { min-height: 128px; }.tool-card__arrow { position: absolute; right: 22px; bottom: 22px; } }
-@media (max-width: 680px) { .tool-menu-button { top: 18px; right: 12px; }.tool-theme-button { top: 18px; right: 58px; } }
+@media (max-width: 680px) { .language-select { top: 18px; right: 150px; }.tool-menu-button { top: 18px; right: 12px; }.tool-theme-button { top: 18px; right: 58px; } }
 @media (max-width: 680px) { .reminder-page { padding-top: 30px; }.reminder-heading { align-items: flex-start; flex-direction: column; }.calendar-card, .reminder-agenda { padding: 14px; }.calendar-day { min-height: 62px; padding: 6px; }.calendar-day.is-today { padding: 5px; }.calendar-day small { display: none; }.agenda-item { grid-template-columns: 1fr auto; gap: 5px 10px; }.agenda-item time { grid-column: 1 / -1; } }
 @media (max-width: 480px) { .logo__letter { font-size: 48px; }.calendar-weekdays, .calendar-grid { gap: 3px; }.calendar-day { min-height: 48px; padding: 5px; }.calendar-day.is-today { padding: 4px; }.calendar-day > span { font-size: .7rem; } }

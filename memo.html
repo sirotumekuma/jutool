@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="ju!countool メモ">
   <title>ju!memo - ju!tool</title>
-  <link rel="icon" type="image/png" href="jutool.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" type="image/png" href="jutool.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="memo-page">
@@ -14,6 +15,9 @@
       <a href="index.html" class="back-link">← ju!tool</a>
       <h1>ju!memo</h1>
       <div class="memo-page-actions">
+        <select class="language-select" data-language-selector aria-label="表示言語">
+          <option value="ja">日本語</option><option value="en">English</option><option value="zh">中文</option>
+        </select>
         <button id="memo-theme" class="tool-theme-button" type="button" aria-label="ダークモードに切り替え">◐</button>
         <button id="memo-add" class="memo-add" type="button" aria-label="メモを追加">＋</button>
         <button id="memo-menu-button" class="tool-menu-button" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>
@@ -34,7 +38,7 @@
       <a href="index.html">ju!tool ホーム</a>
       <a href="jucount.html">ju!count</a>
       <a href="memo.html">ju!memo</a>
-      <a href="ju-remoinder.html">ju!remoinder</a>
+      <a href="ju-reminder.html">ju!reminder</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">利用規約</a>
       <a data-confirm-external href="https://sirotumekuma.github.io/sirotume-lab/" target="_blank" rel="noopener noreferrer">sirotume-lab 2026</a>
@@ -91,6 +95,44 @@
       const tags = [...new Set(memos.flatMap((memo) => normalizeMemo(memo).tags))];
       tagBar.innerHTML = `<button class="memo-tag-filter${activeTag === "" ? " is-active" : ""}" type="button" data-tag="">すべて</button>${tags.map((tag) => `<button class="memo-tag-filter${activeTag === tag ? " is-active" : ""}" type="button" data-tag="${escapeMemo(tag)}">#${escapeMemo(tag)}</button>`).join("")}`;
     }
+    function renderMemoPreview(preview, body, memoIndex) {
+      const lines = String(body || "").split(/\r?\n/);
+      let listType = "";
+      let output = "";
+      const closeList = () => {
+        if (listType) output += `</${listType}>`;
+        listType = "";
+      };
+      const inline = (text) => escapeMemo(text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      lines.forEach((line, lineIndex) => {
+        const checkbox = /^\s*[-*]\s+\[([ xX])\]\s*(.*)$/.exec(line);
+        const bullet = /^\s*[-*]\s+(.+)$/.exec(line);
+        const numbered = /^\s*\d+\.\s+(.+)$/.exec(line);
+        if (checkbox) {
+          closeList();
+          output += `<label class="memo-preview__check"><input type="checkbox" data-memo-index="${memoIndex}" data-checklist-line="${lineIndex}" ${checkbox[1].toLowerCase() === "x" ? "checked" : ""}><span>${inline(checkbox[2])}</span></label>`;
+        } else if (bullet || numbered) {
+          const nextListType = bullet ? "ul" : "ol";
+          if (listType !== nextListType) {
+            closeList();
+            listType = nextListType;
+            output += `<${listType}>`;
+          }
+          output += `<li>${inline((bullet || numbered)[1])}</li>`;
+        } else {
+          closeList();
+          const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+          if (heading) {
+            const level = heading[1].length + 2;
+            output += `<h${level}>${inline(heading[2])}</h${level}>`;
+          } else if (line.trim()) {
+            output += `<p>${inline(line)}</p>`;
+          }
+        }
+      });
+      closeList();
+      preview.innerHTML = output || '<p class="memo-preview__empty">本文を入力すると、ここにプレビューが表示されます。</p>';
+    }
     function renderMemos() {
       const memos = readMemos().map(normalizeMemo);
       renderTags(memos);
@@ -105,11 +147,24 @@
           <div class="memo-card__topline"><span class="memo-card__number">${String(index + 1).padStart(2, "0")}</span><div class="memo-color-picker" role="group" aria-label="メモの色">${memoColors.map((color) => `<button type="button" class="memo-color${memo.color === color ? " is-selected" : ""}" data-color="${color}" data-index="${index}" style="--swatch:${color}" aria-label="色を変更"></button>`).join("")}</div></div>
           <input class="memo-card__title" data-index="${index}" value="${escapeMemo(memo.title)}" aria-label="メモのタイトル">
           <textarea class="memo-card__body" data-index="${index}" aria-label="メモの内容" placeholder="ここに書き残す...">${escapeMemo(memo.body)}</textarea>
+          <div class="memo-format-toolbar" data-memo-index="${index}" role="toolbar" aria-label="本文の書式">
+            <button type="button" data-format="checklist" aria-label="チェックリストを挿入">☑</button>
+            <button type="button" data-format="bullet" aria-label="箇条書きを挿入">•</button>
+            <button type="button" data-format="numbered" aria-label="番号付きリストを挿入">1.</button>
+            <button type="button" data-format="bold" aria-label="太字">B</button>
+            <button type="button" data-format="heading" aria-label="見出し">H</button>
+          </div>
+          <div class="memo-preview"><span class="memo-preview__label">プレビュー</span><div class="memo-preview__content" data-memo-preview="${index}"></div></div>
           <div class="memo-tag-editor"><span>#</span><input class="memo-card__tags" data-index="${index}" value="${escapeMemo(memo.tags.join(", "))}" placeholder="タグを追加（例: 学校, アイデア）" aria-label="タグ"></div>
           <div class="memo-card__chips">${memo.tags.map((tag) => `<button type="button" class="memo-chip" data-tag="${escapeMemo(tag)}">#${escapeMemo(tag)}</button>`).join("")}</div>
           <div class="memo-card__footer"><label><input type="checkbox" data-reflect="${index}" ${memo.reflect ? "checked" : ""}> ju!countに反映</label><button type="button" data-delete="${index}">削除</button></div>
         </article>
       `).join("") : `<div class="memo-empty-state"><strong>${query || activeTag ? "見つかりませんでした" : "まだメモがありません"}</strong><span>${query || activeTag ? "検索条件やタグを変えてみてください。" : "＋ボタンから最初のメモを作りましょう。"}</span></div>`;
+      grid.querySelectorAll(".memo-preview__content").forEach((preview) => {
+        const index = preview.dataset.memoPreview;
+        const textarea = grid.querySelector(`.memo-card__body[data-index="${index}"]`);
+        renderMemoPreview(preview, textarea.value, index);
+      });
     }
     function saveMemoField(index, field, value) {
       const memos = readMemos();
@@ -123,18 +178,58 @@
       renderMemos();
       document.querySelector(".memo-card__title").focus();
     });
+    function applyMemoFormat(index, format) {
+      const textarea = grid.querySelector(`.memo-card__body[data-index="${index}"]`);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.slice(start, end);
+      if (format === "bold") {
+        if (selected) {
+          textarea.setRangeText(`**${selected}**`, start, end, "select");
+        } else {
+          textarea.setRangeText("****", start, end, "end");
+          textarea.setSelectionRange(start + 2, start + 2);
+        }
+      } else {
+        const prefixes = { checklist: "- [ ] ", bullet: "- ", numbered: "1. ", heading: "# " };
+        const lineStart = textarea.value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+        textarea.setRangeText(prefixes[format], lineStart, lineStart, "end");
+      }
+      saveMemoField(index, "body", textarea.value);
+      renderMemoPreview(grid.querySelector(`.memo-preview__content[data-memo-preview="${index}"]`), textarea.value, index);
+      textarea.focus();
+    }
     grid.addEventListener("input", (event) => {
       if (event.target.classList.contains("memo-card__title")) saveMemoField(event.target.dataset.index, "title", event.target.value);
-      if (event.target.classList.contains("memo-card__body")) saveMemoField(event.target.dataset.index, "body", event.target.value);
+      if (event.target.classList.contains("memo-card__body")) {
+        saveMemoField(event.target.dataset.index, "body", event.target.value);
+        renderMemoPreview(grid.querySelector(`.memo-preview__content[data-memo-preview="${event.target.dataset.index}"]`), event.target.value, event.target.dataset.index);
+      }
       if (event.target.classList.contains("memo-card__tags")) {
         saveMemoField(event.target.dataset.index, "tags", event.target.value.split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean).slice(0, 8));
         renderTags(readMemos());
       }
     });
     grid.addEventListener("change", (event) => {
+      if (event.target.dataset.checklistLine !== undefined) {
+        const memos = readMemos();
+        const memo = memos[Number(event.target.dataset.memoIndex)];
+        const lines = String(memo.body || "").split(/\r?\n/);
+        const lineIndex = Number(event.target.dataset.checklistLine);
+        lines[lineIndex] = lines[lineIndex].replace(/^(\s*[-*]\s+\[)[ xX](\])/, `$1${event.target.checked ? "x" : " "}$2`);
+        memo.body = lines.join("\n");
+        writeMemos(memos);
+        renderMemos();
+        return;
+      }
       if (event.target.dataset.reflect !== undefined) saveMemoField(event.target.dataset.reflect, "reflect", event.target.checked);
     });
     grid.addEventListener("click", (event) => {
+      const formatButton = event.target.closest("[data-format]");
+      if (formatButton) {
+        applyMemoFormat(formatButton.closest(".memo-format-toolbar").dataset.memoIndex, formatButton.dataset.format);
+        return;
+      }
       if (event.target.dataset.delete !== undefined) {
         const memos = readMemos();
         memos.splice(Number(event.target.dataset.delete), 1);
@@ -160,5 +255,7 @@
     renderMemos();
   </script>
   <script src="external-link-confirm.js"></script>
+  <script src="maintenance.js"></script>
+  <script src="i18n.js"></script>
 </body>
 </html>
