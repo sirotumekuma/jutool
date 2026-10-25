@@ -1,5 +1,5 @@
 const showMaintenanceBanner = true;
-const blockSiteAccess = true;
+const blockSiteAccess = false;
 
 if (blockSiteAccess) {
   const pageElements = Array.from(document.body.children);
@@ -20,6 +20,6 @@ if (showMaintenanceBanner) {
   const banner = document.createElement("div");
   banner.className = "maintenance-banner";
   banner.setAttribute("role", "status");
-  banner.textContent = "セキュリティメンテナンスのため、現在サイトは一時的に利用できません。ご不便をおかけして申し訳ありません。";
+  banner.textContent = "先日セキュリティアップデートが終了いたしました。ご迷惑をおかけいたしました。";
   document.body.prepend(banner);
 }
