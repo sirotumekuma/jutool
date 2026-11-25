@@ -1,0 +1,18 @@
+{
+  "name": "ju!count school tools",
+  "short_name": "ju!count",
+  "description": "学校生活の予定・持ち物・単語を管理",
+  "start_url": "./ju-tools.html#planner",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "jutool.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

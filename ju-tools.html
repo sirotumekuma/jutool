@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="時間割、持ち物、課題、単語帳をまとめて管理できるju!countの学習ツール。">
+  <title>ju!count tools</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="ju-tools.webmanifest">
+  <link rel="stylesheet" href="ju-tools.css">
+</head>
+<body>
+  <div class="workspace">
+    <header class="topbar">
+      <a class="brand" href="jucount.html"><span>◷</span><span>ju!count <small>TOOLS</small></span></a>
+      <div class="topbar-actions">
+        <a class="back-link" href="jucount.html">ju!countへ戻る</a>
+        <button id="theme-toggle" class="icon-button" type="button" aria-label="ダークモード切替">◐</button>
+      </div>
+    </header>
+    <div class="layout">
+      <nav class="tool-nav" aria-label="ツール一覧">
+        <p class="nav-label">SCHOOL TOOLS</p>
+        <a href="#planner" data-view="planner"><span>▣</span> ju!planner</a>
+        <a href="#schedule" data-view="schedule"><span>◷</span> ju!schedule</a>
+        <a href="#checklist" data-view="checklist"><span>✓</span> ju!checklist</a>
+        <a href="#words" data-view="words"><span>▤</span> ju!words</a>
+        <a href="#search" data-view="search"><span>⌕</span> ju!search</a>
+        <a href="#mobile" data-view="mobile"><span>▯</span> ju!mobile</a>
+      </nav>
+      <main class="content">
+        <section class="view" id="view-planner" data-page="planner">
+          <div class="page-heading"><div><p class="eyebrow">PLAN & TRACK</p><h1>ju!planner</h1><p>課題・提出物・テストの予定を一元管理します。</p></div></div>
+          <div class="card">
+            <h2 id="planner-form-title">予定を追加</h2>
+            <form id="planner-form" class="form-grid">
+              <input id="planner-id" type="hidden">
+              <label>予定名<input id="planner-name" maxlength="100" required></label>
+              <label>期限・実施日<input id="planner-date" type="date" required></label>
+              <label>教科<input id="planner-subject" maxlength="40" placeholder="例：数学"></label>
+              <label>カテゴリー<select id="planner-category"><option>課題</option><option>提出物</option><option>小テスト</option><option>定期テスト</option><option>その他</option></select></label>
+              <label>優先度<select id="planner-priority"><option value="中">中</option><option value="高">高</option><option value="低">低</option></select></label>
+              <label>状態<select id="planner-status"><option>未着手</option><option>進行中</option><option>完了</option></select></label>
+              <label class="wide">詳細・メモ<textarea id="planner-details" rows="2" maxlength="500"></textarea></label>
+              <div class="form-actions wide"><button class="primary-button" type="submit">保存</button><button id="planner-cancel" class="subtle-button" type="button" hidden>編集をキャンセル</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <div class="section-title"><h2>予定カレンダー</h2><div class="inline-actions"><button id="planner-prev" class="subtle-button" type="button">‹</button><strong id="planner-month"></strong><button id="planner-next" class="subtle-button" type="button">›</button></div></div>
+            <div class="calendar weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+            <div id="planner-calendar" class="calendar"></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><h2>予定一覧</h2><div class="filters"><select id="planner-filter-category" aria-label="カテゴリーで絞り込み"><option value="">全カテゴリー</option><option>課題</option><option>提出物</option><option>小テスト</option><option>定期テスト</option><option>その他</option></select><select id="planner-filter-subject" aria-label="教科で絞り込み"><option value="">全教科</option></select><select id="planner-sort" aria-label="並び替え"><option value="date">期限順</option><option value="subject">教科別</option></select></div></div>
+            <div id="planner-list" class="item-list"></div>
+          </div>
+        </section>
+        <section class="view" id="view-schedule" data-page="schedule" hidden>
+          <div class="page-heading"><div><p class="eyebrow">DATE OVERRIDES</p><h1>ju!schedule</h1><p>指定日の変更だけを保存し、通常時間割は上書きしません。</p></div></div>
+          <div class="notice">変更は日付ごとの臨時データとして保存されます。該当日を過ぎても通常時間割には影響しません。</div>
+          <div class="card">
+            <h2>授業変更を追加</h2>
+            <form id="schedule-form" class="form-grid">
+              <label>対象日<input id="schedule-date" type="date" required></label>
+              <label>変更タイプ<select id="schedule-type"><option>通常変更</option><option>休講</option><option>代替授業</option><option>特別時間割</option><option>短縮授業</option><option>臨時授業</option></select></label>
+              <label>時限・授業名<input id="schedule-name" maxlength="80" placeholder="例：数学 / 3時間目" required></label>
+              <label>教科（任意）<input id="schedule-subject" maxlength="40" placeholder="例：数学"></label>
+              <label>開始時刻<input id="schedule-start" type="time"></label>
+              <label>終了時刻<input id="schedule-end" type="time"></label>
+              <label class="wide">変更内容・メモ<input id="schedule-note" maxlength="200"></label>
+              <div class="form-actions wide"><button class="primary-button" type="submit">変更を保存</button></div>
+            </form>
+          </div>
+          <div class="card"><div class="section-title"><h2>臨時変更一覧</h2><label class="compact-label">日付 <input id="schedule-filter-date" type="date"></label></div><div id="schedule-list" class="item-list"></div></div>
+        </section>
+        <section class="view" id="view-checklist" data-page="checklist" hidden>
+          <div class="page-heading"><div><p class="eyebrow">READY FOR SCHOOL</p><h1>ju!checklist</h1><p>今日の時間割に合わせて、必要な持ち物を確認します。</p></div></div>
+          <div class="card"><div class="section-title"><h2>持ち物を登録</h2><button id="checklist-reset" class="subtle-button" type="button">今日のチェックをリセット</button></div>
+            <form id="checklist-form" class="form-grid">
+              <label>持ち物<input id="checklist-name" maxlength="80" required placeholder="例：数学の教科書"></label>
+              <label>教科（空欄なら毎日）<input id="checklist-subject" maxlength="40" placeholder="例：数学"></label>
+              <label class="wide">曜日（未選択なら毎日）<select id="checklist-weekdays" multiple aria-label="曜日を複数選択"><option value="1">月曜日</option><option value="2">火曜日</option><option value="3">水曜日</option><option value="4">木曜日</option><option value="5">金曜日</option><option value="6">土曜日</option><option value="0">日曜日</option></select><small>複数選択は Ctrl / ⌘ を押しながら選択してください。</small></label>
+              <div class="form-actions wide"><button class="primary-button" type="submit">持ち物を追加</button></div>
+            </form>
+          </div>
+          <div class="card"><div class="section-title"><h2 id="checklist-today-title">今日の持ち物</h2><span id="checklist-progress" class="muted"></span></div><div id="checklist-list" class="item-list"></div></div>
+          <div class="card"><h2>登録済みの持ち物</h2><div id="checklist-manage" class="item-list"></div></div>
+        </section>
+        <section class="view" id="view-words" data-page="words" hidden>
+          <div class="page-heading"><div><p class="eyebrow">LEARN & REMEMBER</p><h1>ju!words</h1><p>単語帳を作成して、学習記録を残しながら復習します。</p></div></div>
+          <div class="card"><h2>単語帳を作成</h2><form id="deck-form" class="form-grid"><label>単語帳名<input id="deck-name" maxlength="80" required></label><label>カテゴリー<input id="deck-category" maxlength="40" placeholder="例：英語"></label><label class="wide">説明<input id="deck-description" maxlength="200"></label><div class="form-actions wide"><button class="primary-button" type="submit">単語帳を追加</button></div></form></div>
+          <div class="card"><div class="section-title"><h2>単語帳</h2><div class="inline-actions"><select id="deck-select" aria-label="単語帳を選択"></select><button id="deck-export" class="subtle-button" type="button">エクスポート</button><button id="deck-import-button" class="subtle-button" type="button">インポート</button><input id="deck-import-file" type="file" accept=".json,.csv,text/csv,application/json" hidden></div></div>
+            <div id="deck-stats" class="stats"></div>
+            <form id="word-form" class="form-grid compact-form"><input id="word-id" type="hidden"><label>表面・問題<input id="word-front" maxlength="200" required></label><label>裏面・答え<input id="word-back" maxlength="200" required></label><label class="wide">例文・発音・メモ<input id="word-note" maxlength="300"></label><div class="form-actions wide"><button class="primary-button" type="submit">単語を保存</button><button id="word-cancel" class="subtle-button" type="button" hidden>編集をキャンセル</button></div></form>
+            <div class="study-controls"><label>出題方法<select id="study-mode"><option value="all">全単語・順番</option><option value="shuffle">全単語・シャッフル</option><option value="weak">苦手な単語</option></select></label><button id="study-start" class="primary-button" type="button">学習を開始</button></div>
+            <section id="study-panel" class="study-panel" hidden><div class="section-title"><strong id="study-progress"></strong><button id="study-flip" class="subtle-button" type="button">答えを見る</button></div><h3 id="study-front"></h3><p id="study-back" hidden></p><p id="study-note" class="muted" hidden></p><div id="study-rating" class="inline-actions" hidden><button id="study-wrong" class="danger-button" type="button">不正解</button><button id="study-correct" class="primary-button" type="button">正解</button></div></section>
+            <div id="word-list" class="item-list"></div>
+          </div>
+          <div class="card"><h2>学習履歴</h2><div id="study-history" class="item-list"></div></div>
+        </section>
+        <section class="view" id="view-search" data-page="search" hidden>
+          <div class="page-heading"><div><p class="eyebrow">SEARCH EVERYTHING</p><h1>ju!search</h1><p>時間割・課題・持ち物・メモ・単語帳を横断して検索します。</p></div></div>
+          <div class="card"><label class="search-box"><span>⌕</span><input id="global-search" type="search" placeholder="キーワードを入力" autocomplete="off"></label><div class="filters"><select id="search-category" aria-label="カテゴリーで絞り込み"><option value="">すべてのカテゴリー</option><option value="課題">課題</option><option value="テスト予定">テスト予定</option><option value="持ち物">持ち物</option><option value="時間割">時間割</option><option value="授業メモ">授業メモ</option><option value="単語帳">単語帳</option><option value="予定">予定</option></select></div><div id="search-results" class="item-list"><p class="empty-state">キーワードを入力すると検索結果を表示します。</p></div></div>
+          <div class="card"><div class="section-title"><h2>検索履歴</h2><button id="search-history-clear" class="subtle-button" type="button">履歴を削除</button></div><div id="search-history" class="chips"></div></div>
+        </section>
+        <section class="view" id="view-mobile" data-page="mobile" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TAKE IT WITH YOU</p><h1>ju!mobile</h1><p>ホーム画面への追加と、オフライン利用の設定を確認できます。</p></div></div>
+          <div class="card"><h2>アプリとして使う</h2><p>このページはPWAに対応しています。ブラウザーの共有／メニューから「ホーム画面に追加」を選ぶと、アプリのように起動できます。</p><button id="install-app" class="primary-button" type="button" hidden>ホーム画面に追加</button><p id="install-help" class="muted">インストール可能な場合は、ブラウザーのメニューにインストール項目が表示されます。</p></div>
+          <div class="card"><h2>オフラインとデータ</h2><p>時間割・課題・持ち物・単語帳などはこの端末のブラウザー内に自動保存されます。初回アクセス後は、保存済みデータをオフラインでも利用できます。</p><p id="connection-status" class="status-pill"></p><div class="inline-actions"><button id="backup-export" class="primary-button" type="button">JSONバックアップを保存</button><label class="file-button">バックアップを復元<input id="backup-import" type="file" accept=".json,application/json" hidden></label></div><p id="backup-message" class="muted" role="status"></p></div>
+          <div class="card"><h2>プライバシー</h2><p>学習データは端末内のlocalStorageに保存され、外部サーバーには送信しません。ブラウザーのデータ削除や別端末への移行に備えて、定期的にバックアップしてください。</p></div>
+        </section>
+        <footer class="app-footer"><a href="jucount.html">ju!count</a> · 端末内に自動保存</footer>
+      </main>
+    </div>
+  </div>
+  <script src="ju-tools.js"></script>
+</body>
+</html>

@@ -83,7 +83,8 @@
     </nav>
   </aside>
   <script>
-    const reminderKey = "ju-remoinder-events";
+    const reminderKey = "ju-reminder-events";
+    const legacyReminderKey = "ju-remoinder-events";
     const countTasksKey = "ju-count-tasks";
     const calendarGrid = document.querySelector("#calendar-grid");
     const calendarTitle = document.querySelector("#calendar-title");
@@ -99,9 +100,14 @@
     const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     const escapeReminder = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
     const readReminders = () => {
+      const current = localStorage.getItem(reminderKey);
+      const source = current === null ? localStorage.getItem(legacyReminderKey) : current;
+      if (source === null) return [];
       try {
-        const events = JSON.parse(localStorage.getItem(reminderKey) || "[]");
-        return Array.isArray(events) ? events : [];
+        const events = JSON.parse(source);
+        if (!Array.isArray(events)) throw new TypeError("リマインダーデータの形式が正しくありません。");
+        if (current === null) localStorage.setItem(reminderKey, JSON.stringify(events));
+        return events;
       } catch (error) {
         console.warn("リマインダーを読み込めませんでした。", error);
         return [];

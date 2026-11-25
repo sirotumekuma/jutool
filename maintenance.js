@@ -1,4 +1,4 @@
-const showMaintenanceBanner = true;
+const showMaintenanceBanner = false;
 const blockSiteAccess = false;
 
 if (blockSiteAccess) {

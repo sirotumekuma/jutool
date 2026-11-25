@@ -45,7 +45,8 @@ const scheduleStorageKey = "ju-count-schedules";
 const groupStorageKey = "ju-count-schedule-groups";
 const taskStorageKey = "ju-count-tasks";
 const memoStorageKey = "ju-countool-memos";
-const reminderStorageKey = "ju-remoinder-events";
+const reminderStorageKey = "ju-reminder-events";
+const legacyReminderStorageKey = "ju-remoinder-events";
 const scheduleModes = ["normal", "short", "test"];
 const BELL_COUNTDOWN_SECONDS = 41;
 const RAINBOW_SPEED_STORAGE_KEY = "ju-count-rainbow-speed";
@@ -60,6 +61,19 @@ const CRACKER_LEVEL_STORAGE_KEY = "ju-count-cracker-level";
 const CRACKER_LEVEL_COUNTS = { none: 0, few: 12, normal: 32, more: 60, many: 100 };
 let previousLesson = null;
 let confettiTimeout;
+
+if (localStorage.getItem(reminderStorageKey) === null) {
+  const legacyReminders = localStorage.getItem(legacyReminderStorageKey);
+  if (legacyReminders !== null) {
+    try {
+      const parsedReminders = JSON.parse(legacyReminders);
+      if (!Array.isArray(parsedReminders)) throw new TypeError("リマインダーデータの形式が正しくありません。");
+      localStorage.setItem(reminderStorageKey, JSON.stringify(parsedReminders));
+    } catch (error) {
+      console.warn("旧リマインダーデータを移行できませんでした。", error);
+    }
+  }
+}
 
 function cloneSchedules(schedules) {
   return JSON.parse(JSON.stringify(schedules));
