@@ -74,7 +74,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, va
 .tool-card:hover, .tool-card:focus-visible { border-color: var(--card-accent); box-shadow: var(--shadow); transform: translateY(-4px); }
 .tool-card__icon { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 16px; color: #fff; background: var(--card-accent); font-size: 1.65rem; }
 .tool-card--count { --card-accent: #2563eb; }.tool-card--memo { --card-accent: #64748b; }.tool-card--reminder { --card-accent: #16a66a; }
-.tool-card--school { --card-accent: #7c3aed; }
 .tool-card strong, .tool-card small { display: block; }.tool-card strong { font-size: 1.05rem; letter-spacing: -.02em; }.tool-card small { margin-top: 5px; color: var(--muted); font-size: .76rem; line-height: 1.5; }.tool-card__arrow { margin-top: auto; color: var(--card-accent); font-size: 1.25rem; }
 .tool-menu { position: fixed; inset: 0 0 0 auto; z-index: 10; width: min(88vw, 360px); padding: 26px 20px; color: var(--fg); background: rgba(255,255,255,0.9); backdrop-filter: blur(18px); box-shadow: -18px 0 45px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .25s ease; }
 .tool-menu.is-open { transform: translateX(0); }
